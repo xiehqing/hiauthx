@@ -1,0 +1,26 @@
+server:
+  host: '0.0.0.0'
+  port: 7798
+  # 写入超时时间，默认 10s re
+  write-timeout: 10000
+  # 空闲超时时间，默认 120s
+  idle-timeout: 12000
+  # 关闭超时时间，默认 10s
+  shutdown-timeout: 10000
+log:
+  level: "info"
+  output: "stdout"
+db:
+  # 数据库类型
+  db-type: "mysql"
+  # 是否打印debug sql
+  debug: false
+  # 数据库连接地址
+  host: 192.168.12.34
+  port: 3306
+  username: root
+  password: zorkdata.8888
+  database: hi_auth
+  charset: utf8mb4
+  append-params: parseTime=True&loc=Local
+  max-lifetime: 100

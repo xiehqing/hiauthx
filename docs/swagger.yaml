@@ -1,0 +1,1724 @@
+﻿openapi: 3.0.3
+info:
+  title: hiauth 权限管理 API
+  version: 1.0.0
+  description: Hiauth permission management API.
+servers:
+  - url: http://localhost:8080
+    description: Local
+tags:
+  - name: Health
+    description: 健康检查
+  - name: 认证管理
+    description: 登录、登出和当前用户
+  - name: 用户管理
+    description: 用户管理
+  - name: 角色管理
+    description: 角色管理
+  - name: 部门管理
+    description: 部门管理
+  - name: 菜单管理
+    description: 菜单管理
+  - name: 系统配置
+    description: 系统常用变量配置
+  - name: API管理
+    description: 维护接口基本信息及其审计元数据
+  - name: 操作审计
+    description: 操作审计日志和数据库变更明细查询
+paths:
+  /api/v1/health:
+    get:
+      tags: [Health]
+      summary: 健康检查
+      responses:
+        "200":
+          description: 服务可用
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Response"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: ok
+
+  /api/v1/auth/login:
+    post:
+      tags: [认证管理]
+      summary: 用户登录
+      description: 使用用户名和密码登录；开启登录加密时，password 为 RSA-OAEP-SHA256 加密后的 Base64 密文。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/auth/encrypt-config:
+    get:
+      tags: [认证管理]
+      summary: 获取登录密码加密配置
+      description: Returns RSA public key for password encryption. Private key is never returned.
+      responses:
+        "200":
+          description: Login encryption config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EncryptConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [认证管理]
+      summary: 退出登录
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 退出成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/auth/me:
+    get:
+      tags: [认证管理]
+      summary: 获取当前登录用户
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 当前登录用户信息
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/users:
+    get:
+      tags: [用户管理]
+      summary: 查询用户列表
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+
+
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/SortField"
+        - $ref: "#/components/parameters/SortOrder"
+        - name: status
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 用户状态，0 禁用，1 启用
+        - name: roleId
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: 按角色过滤
+        - name: departmentId
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: 按部门过滤，包含该部门及其所有子部门下的用户
+      responses:
+        "200":
+          description: 用户分页列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPageResponse"
+    post:
+      tags: [用户管理]
+      summary: 创建用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/users/{id}:
+    get:
+      tags: [用户管理]
+      summary: 查询用户详情
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 用户详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    put:
+      tags: [用户管理]
+      summary: 更新用户
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    delete:
+      tags: [用户管理]
+      summary: 删除用户
+      description: 用户使用硬删除，删除时会清理用户角色关联。
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/roles:
+    get:
+      tags: [角色管理]
+      summary: 查询角色列表
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - name: builtIn
+          in: query
+          required: false
+          description: 0 custom role, 1 built-in role
+          schema:
+            type: integer
+            enum: [0, 1]
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/SortField"
+        - $ref: "#/components/parameters/SortOrder"
+      responses:
+        "200":
+          description: 角色分页列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RolePageResponse"
+    post:
+      tags: [角色管理]
+      summary: 创建角色
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/roles/options:
+    get:
+      tags: [角色管理]
+      summary: 获取角色全量下拉选项
+      description: 用于用户新增或编辑时选择角色，返回全部角色数据。
+      responses:
+        "200":
+          description: 角色选项列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleListResponse"
+
+  /api/v1/roles/{id}:
+    get:
+      tags: [角色管理]
+      summary: 查询角色详情
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 角色详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    put:
+      tags: [角色管理]
+      summary: 更新角色
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    delete:
+      tags: [角色管理]
+      summary: 删除角色
+      description: 自定义角色使用硬删除，删除时会清理角色菜单授权和用户角色关联；内置角色不允许删除。
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/roles/{id}/menus:
+    get:
+      tags: [角色管理]
+      summary: 查询角色已授权菜单
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 角色菜单列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    put:
+      tags: [角色管理]
+      summary: 更新角色授权菜单
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleMenusRequest"
+      responses:
+        "200":
+          description: 授权成功，返回最新菜单列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/departments:
+    get:
+      tags: [部门管理]
+      summary: 查询部门列表
+      description: 返回部门树结构。关键字或 parentId 命中非顶级部门时，会同时返回其上级部门以保留完整层级。
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - name: parentId
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: 按上级部门过滤
+      responses:
+        "200":
+          description: 部门树列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentTreeListResponse"
+    post:
+      tags: [部门管理]
+      summary: 创建部门
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDepartmentRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/departments/options:
+    get:
+      tags: [部门管理]
+      summary: 获取部门全量下拉选项
+      description: 用于用户新增或编辑时选择部门，返回全部部门树结构。
+      responses:
+        "200":
+          description: 部门选项列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentTreeListResponse"
+
+  /api/v1/departments/{id}:
+    get:
+      tags: [部门管理]
+      summary: 查询部门详情
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 部门详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    put:
+      tags: [部门管理]
+      summary: 更新部门
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDepartmentRequest"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    delete:
+      tags: [部门管理]
+      summary: 删除部门
+      description: 部门使用硬删除，删除时会清理用户部门关联。
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/menus:
+    get:
+      tags: [菜单管理]
+      summary: 查询菜单列表
+      description: 返回菜单树结构。关键字或 parentId 命中非顶级菜单时，会同时返回其上级菜单以保留完整层级。
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - name: type
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1, 2]
+          description: 类型，0 分组，1 菜单，2 按钮
+        - name: parentId
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: 按上级菜单过滤
+        - name: show
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 是否显示，0 不显示，1 显示
+      responses:
+        "200":
+          description: 菜单树列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuTreeListResponse"
+    post:
+      tags: [菜单管理]
+      summary: 创建菜单
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMenuRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/menus/{id}:
+    get:
+      tags: [菜单管理]
+      summary: 查询菜单详情
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 菜单详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    put:
+      tags: [菜单管理]
+      summary: 更新菜单
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMenuRequest"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    delete:
+      tags: [菜单管理]
+      summary: 删除菜单
+      description: 菜单使用硬删除，删除时会清理角色菜单授权。
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/system-configs:
+    get:
+      tags: [系统配置]
+      summary: 查询系统配置列表
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/SortField"
+        - $ref: "#/components/parameters/SortOrder"
+        - name: group
+          in: query
+          schema:
+            type: string
+          description: 配置分组
+        - name: enabled
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: 是否启用，0 禁用，1 启用
+      responses:
+        "200":
+          description: 系统配置分页列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigPageResponse"
+    post:
+      tags: [系统配置]
+      summary: 创建系统配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSystemConfigRequest"
+      responses:
+        "200":
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/system-configs/enabled:
+    get:
+      tags: [系统配置]
+      summary: 查询启用的系统配置列表
+      parameters:
+        - name: group
+          in: query
+          schema:
+            type: string
+          description: 配置分组，不传返回所有启用配置
+      responses:
+        "200":
+          description: 启用配置列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigListResponse"
+
+  /api/v1/system-configs/enabled-map:
+    get:
+      tags: [系统配置]
+      summary: 查询启用的系统配置 Map
+      parameters:
+        - name: group
+          in: query
+          schema:
+            type: string
+          description: 配置分组，不传返回所有启用配置
+      responses:
+        "200":
+          description: 启用配置键值对
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigMapResponse"
+
+  /api/v1/system-configs/by-key/{key}:
+    get:
+      tags: [系统配置]
+      summary: 根据配置键查询系统配置
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 配置键
+      responses:
+        "200":
+          description: 系统配置详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/system-configs/{id}:
+    get:
+      tags: [系统配置]
+      summary: 查询系统配置详情
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 系统配置详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    put:
+      tags: [系统配置]
+      summary: 更新系统配置
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSystemConfigRequest"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    delete:
+      tags: [系统配置]
+      summary: 删除系统配置
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/apis:
+    get:
+      tags: [API管理]
+      summary: 查询 API 列表
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - name: method
+          in: query
+          schema: { type: string }
+        - name: module
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: integer, enum: [0, 1] }
+      responses:
+        "200":
+          description: API 分页列表
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/APIPageResponse" }
+    post:
+      tags: [API管理]
+      summary: 新增 API
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAPIRequest" }
+      responses:
+        "200":
+          description: 新增成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/APIResponse" }
+
+  /api/v1/apis/{id}:
+    get:
+      tags: [API管理]
+      summary: 查询 API 详情
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: API 详情
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/APIResponse" }
+    put:
+      tags: [API管理]
+      summary: 更新 API
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAPIRequest" }
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/APIResponse" }
+    delete:
+      tags: [API管理]
+      summary: 删除 API
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageResponse" }
+
+  /api/v1/audit-logs:
+    get:
+      tags: [操作审计]
+      summary: 查询操作审计列表
+      description: 查询操作审计主记录，详情中的数据库变更前后数据请调用审计详情接口查看。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Keyword"
+        - $ref: "#/components/parameters/PageNo"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/SortField"
+        - $ref: "#/components/parameters/SortOrder"
+        - name: operatorName
+          in: query
+          schema:
+            type: string
+          description: 操作人用户名，支持模糊查询
+        - name: module
+          in: query
+          schema:
+            type: string
+            example: 用户管理
+          description: 操作模块
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [create, update, delete, authorize, query, login, logout]
+          description: 操作类型，create 新增，update 修改，delete 删除，authorize 授权，query 查询，login 登录，logout 退出登录
+        - name: resourceType
+          in: query
+          schema:
+            type: string
+            example: user
+          description: 资源类型，例如 user、role、department、menu、system_config、user_roles、role_menus
+        - name: resourceId
+          in: query
+          schema:
+            type: integer
+            format: int64
+          description: 资源 ID
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [success, fail]
+          description: 审计状态，当前数据变更审计主要记录 success
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            example: "2026-05-22 00:00:00"
+          description: 操作开始时间，格式 yyyy-MM-dd HH:mm:ss，按 createdAt 过滤
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            example: "2026-05-22 23:59:59"
+          description: 操作结束时间，格式 yyyy-MM-dd HH:mm:ss，按 createdAt 过滤
+      responses:
+        "200":
+          description: 操作审计分页列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/audit-logs/{id}:
+    get:
+      tags: [操作审计]
+      summary: 查询操作审计详情
+      description: 返回操作审计主记录及数据库变更明细，包括 beforeData、afterData 和 changedFields。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: 操作审计详情
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: 主键 ID
+    Keyword:
+      name: keyword
+      in: query
+      schema:
+        type: string
+      description: 关键字
+    PageNo:
+      name: pageNo
+      in: query
+      schema:
+        type: integer
+        default: 1
+      description: 页码
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 10
+        maximum: 200
+      description: 每页条数
+    SortField:
+      name: sortField
+      in: query
+      schema:
+        type: string
+      description: 排序字段
+    SortOrder:
+      name: sortOrder
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+      description: 排序方向
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Response"
+
+  schemas:
+    Response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: OK
+        data:
+          nullable: true
+      required: [code, message]
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          pattern: "^[A-Za-z][A-Za-z0-9_.-]{2,31}$"
+          description: 用户名必须以字母开头，长度 3-32，仅支持字母、数字、下划线、点和短横线
+          example: admin
+        password:
+          type: string
+          format: password
+          description: 明文密码
+        device:
+          type: string
+          default: web
+          description: 登录设备标识，不传默认为 web
+
+    LoginData:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        user:
+          $ref: "#/components/schemas/User"
+        roles:
+          type: array
+          items:
+            type: string
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 当前用户拥有的菜单路由权限
+        menus:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuTree"
+        department:
+          $ref: "#/components/schemas/Department"
+
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/LoginData"
+
+    EncryptConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        algorithm:
+          type: string
+          example: RSA-OAEP-SHA256
+        publicKey:
+          type: string
+          description: RSA public key in PEM format. Empty when encryption is disabled.
+
+    EncryptConfigResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/EncryptConfig"
+
+    BaseModel:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedBy:
+          type: string
+
+    User:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            username:
+              type: string
+            nickname:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+            status:
+              type: integer
+              enum: [0, 1]
+            roles:
+              type: array
+              items:
+                $ref: "#/components/schemas/Role"
+            departmentId:
+              type: integer
+              format: int64
+            department:
+              $ref: "#/components/schemas/Department"
+
+    Role:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            displayName:
+              type: string
+            name:
+              type: string
+            description:
+              type: string
+            builtIn:
+              type: integer
+              enum: [0, 1]
+              description: 0 custom role, 1 built-in role. Built-in roles cannot be deleted.
+            menus:
+              type: array
+              items:
+                $ref: "#/components/schemas/Menu"
+
+    Department:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            parentId:
+              type: integer
+              format: int64
+            name:
+              type: string
+            sort:
+              type: integer
+    DepartmentTree:
+      allOf:
+        - $ref: "#/components/schemas/Department"
+        - type: object
+          properties:
+            children:
+              type: array
+              items:
+                $ref: "#/components/schemas/DepartmentTree"
+
+    Menu:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            type:
+              type: integer
+              enum: [0, 1, 2]
+              description: 类型，0 分组，1 菜单，2 按钮
+            parentId:
+              type: integer
+              format: int64
+            name:
+              type: string
+            route:
+              type: string
+            sort:
+              type: integer
+            icon:
+              type: string
+            show:
+              type: integer
+              enum: [0, 1]
+    MenuTree:
+      allOf:
+        - $ref: "#/components/schemas/Menu"
+        - type: object
+          properties:
+            children:
+              type: array
+              items:
+                $ref: "#/components/schemas/MenuTree"
+    SystemConfig:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            key:
+              type: string
+              example: site.title
+            value:
+              type: string
+              example: hiauth
+            name:
+              type: string
+              example: 系统名称
+            valueType:
+              type: string
+              enum: [string, number, bool, json]
+            group:
+              type: string
+              example: basic
+            description:
+              type: string
+            enabled:
+              type: integer
+              enum: [0, 1]
+            sort:
+              type: integer
+
+    API:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            name: { type: string }
+            method: { type: string, example: GET }
+            path: { type: string, example: /api/v1/users/:id }
+            module: { type: string, example: 用户管理 }
+            action: { type: string, example: query }
+            description: { type: string, example: 查询用户详情 }
+            resourceType: { type: string, example: user }
+            status: { type: integer, enum: [0, 1] }
+            sort: { type: integer }
+
+    AuditChange:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            auditLogId:
+              type: integer
+              format: int64
+              description: 关联的审计日志 ID
+            tableName:
+              type: string
+              example: user
+              description: 发生变更的数据表
+            recordId:
+              type: integer
+              format: int64
+              description: 发生变更的数据主键 ID
+            operation:
+              type: string
+              enum: [create, update, delete]
+              description: 数据变更类型
+            beforeData:
+              type: string
+              description: 变更前数据 JSON 字符串，新增时为空；敏感字段会脱敏
+              example: "{\"id\":1,\"username\":\"admin\"}"
+            afterData:
+              type: string
+              description: 变更后数据 JSON 字符串，删除时为空；敏感字段会脱敏
+              example: "{\"id\":1,\"username\":\"admin\",\"nickname\":\"管理员\"}"
+            changedFields:
+              type: string
+              description: 发生变化的字段名 JSON 数组字符串
+              example: "[\"nickname\"]"
+            fieldChanges:
+              type: string
+              description: 字段变更明细 JSON 数组字符串，仅包含业务字段；每项包含 field、before、after
+              example: "[{\"field\":\"nickname\",\"before\":\"张三\",\"after\":\"李四\"}]"
+
+    AuditLog:
+      allOf:
+        - $ref: "#/components/schemas/BaseModel"
+        - type: object
+          properties:
+            requestId:
+              type: string
+              description: 请求链路 ID
+            operatorId:
+              type: integer
+              format: int64
+              description: 操作人用户 ID
+            operatorName:
+              type: string
+              description: 操作人用户名
+            module:
+              type: string
+              example: 用户管理
+              description: 操作模块
+            action:
+              type: string
+              enum: [create, update, delete, authorize, query, login, logout]
+              description: 操作类型
+            resourceType:
+              type: string
+              example: user
+              description: 资源类型
+            resourceId:
+              type: integer
+              format: int64
+              description: 资源 ID
+            description:
+              type: string
+              example: 修改用户，ID：1
+              description: 操作描述
+            method:
+              type: string
+              example: PUT
+              description: HTTP 方法
+            path:
+              type: string
+              example: /api/v1/users/1
+              description: 请求路径
+            ip:
+              type: string
+              description: 客户端 IP
+            userAgent:
+              type: string
+              description: User-Agent
+            status:
+              type: string
+              enum: [success, fail]
+              description: 操作状态
+            errorMessage:
+              type: string
+              description: 失败原因
+            durationMs:
+              type: integer
+              format: int64
+              description: 请求耗时，单位毫秒
+            changes:
+              type: array
+              description: 数据库变更明细，列表接口通常为空，详情接口返回
+              items:
+                $ref: "#/components/schemas/AuditChange"
+
+    PageUser:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+          format: int64
+        pageNo:
+          type: integer
+        pageSize:
+          type: integer
+    PageRole:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        total:
+          type: integer
+          format: int64
+        pageNo:
+          type: integer
+        pageSize:
+          type: integer
+    PageMenu:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/Menu"
+        total:
+          type: integer
+          format: int64
+        pageNo:
+          type: integer
+        pageSize:
+          type: integer
+    PageSystemConfig:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/SystemConfig"
+        total:
+          type: integer
+          format: int64
+        pageNo:
+          type: integer
+        pageSize:
+          type: integer
+    PageAPI:
+      type: object
+      properties:
+        list:
+          type: array
+          items: { $ref: "#/components/schemas/API" }
+        total: { type: integer, format: int64 }
+        pageNo: { type: integer }
+        pageSize: { type: integer }
+    PageAuditLog:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+          format: int64
+        pageNo:
+          type: integer
+        pageSize:
+          type: integer
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, nickname]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+          description: 明文密码，服务端入库前会进行 MD5 加密
+        nickname:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        status:
+          type: integer
+          enum: [0, 1]
+          description: 不传默认启用
+        roleIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+        departmentId:
+          type: integer
+          format: int64
+        operator:
+          type: string
+    UpdateUserRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateUserRequest"
+        - type: object
+          properties:
+            password:
+              type: string
+              format: password
+              description: 明文密码，服务端入库前会进行 MD5 加密；为空时不更新密码
+            status:
+              type: integer
+              enum: [0, 1]
+
+    CreateRoleRequest:
+      type: object
+      required: [displayName, name]
+      properties:
+        displayName:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        operator:
+          type: string
+    UpdateRoleRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+        description:
+          type: string
+        operator:
+          type: string
+
+    UpdateRoleMenusRequest:
+      type: object
+      properties:
+        menuIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+        operator:
+          type: string
+
+    CreateDepartmentRequest:
+      type: object
+      required: [name]
+      properties:
+        parentId:
+          type: integer
+          format: int64
+          default: 0
+        name:
+          type: string
+        sort:
+          type: integer
+          default: 0
+        operator:
+          type: string
+    UpdateDepartmentRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateDepartmentRequest"
+
+    CreateMenuRequest:
+      type: object
+      required: [name]
+      properties:
+        type:
+          type: integer
+          enum: [0, 1, 2]
+          description: 类型，0 分组，1 菜单，2 按钮
+          default: 0
+        parentId:
+          type: integer
+          format: int64
+          default: 0
+        name:
+          type: string
+        route:
+          type: string
+          description: 路由；分组类型无需填写
+        sort:
+          type: integer
+          default: 0
+        icon:
+          type: string
+          description: 图标；分组类型无需填写
+        show:
+          type: integer
+          enum: [0, 1]
+          description: 是否显示，0 不显示，1 显示；分组类型无需填写
+        operator:
+          type: string
+    UpdateMenuRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateMenuRequest"
+
+    CreateSystemConfigRequest:
+      type: object
+      required: [key, name]
+      properties:
+        key:
+          type: string
+          description: 配置键，支持字母、数字、下划线、点、冒号、短横线，必须以字母开头
+          example: site.title
+        value:
+          type: string
+        name:
+          type: string
+        valueType:
+          type: string
+          enum: [string, number, bool, json]
+          default: string
+        group:
+          type: string
+          default: default
+        description:
+          type: string
+        enabled:
+          type: integer
+          enum: [0, 1]
+          default: 1
+        sort:
+          type: integer
+          default: 0
+        operator:
+          type: string
+    UpdateSystemConfigRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateSystemConfigRequest"
+
+    CreateAPIRequest:
+      type: object
+      required: [name, method, path, module, action]
+      properties:
+        name: { type: string }
+        method: { type: string, enum: [GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD] }
+        path: { type: string, description: "Hertz 路由模板，例如 /api/v1/users/:id" }
+        module: { type: string }
+        action: { type: string }
+        description: { type: string }
+        resourceType: { type: string, default: request }
+        status: { type: integer, enum: [0, 1], default: 1 }
+        sort: { type: integer, default: 0 }
+        operator: { type: string }
+    UpdateAPIRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateAPIRequest"
+      required: [name, method, path, module, action, status]
+
+    UserResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/User"
+    RoleResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Role"
+    DepartmentResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Department"
+    MenuResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Menu"
+    UserPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PageUser"
+    RolePageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PageRole"
+    DepartmentTreeListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/DepartmentTree"
+    MenuPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PageMenu"
+    MenuTreeListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/MenuTree"
+    SystemConfigResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/SystemConfig"
+    APIResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/API" }
+    APIPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PageAPI" }
+    SystemConfigPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PageSystemConfig"
+    AuditLogResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/AuditLog"
+    AuditLogPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/PageAuditLog"
+    SystemConfigListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SystemConfig"
+    SystemConfigMapResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties:
+                type: string
+    MenuListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Menu"
+    RoleListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Role"
+    MessageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              nullable: true
