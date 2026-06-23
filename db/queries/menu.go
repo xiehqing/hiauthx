@@ -96,7 +96,7 @@ func (q *Queries) ListMenus(ctx context.Context, filter MenuListFilter) ([]entit
 		db = db.Where("parent_id = ?", *filter.ParentID)
 	}
 	if filter.Show != nil {
-		db = db.Where("show = ?", *filter.Show)
+		db = db.Where("`show` = ?", *filter.Show)
 	}
 
 	var menus []entity.Menu

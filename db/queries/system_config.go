@@ -10,8 +10,9 @@ import (
 
 type SystemConfigListFilter struct {
 	ormx.Pagination
-	Group   string `json:"group" form:"group"`
-	Enabled *int   `json:"enabled" form:"enabled"`
+	Group    string `json:"group" form:"group"`
+	Category string `json:"category" form:"category"`
+	Enabled  *int   `json:"enabled" form:"enabled"`
 }
 
 func (q *Queries) CreateSystemConfig(ctx context.Context, config *entity.SystemConfig) error {
@@ -25,7 +26,7 @@ func (q *Queries) UpdateSystemConfig(ctx context.Context, config *entity.SystemC
 		return tx.
 			Model(&entity.SystemConfig{}).
 			Where("id = ?", config.ID).
-			Select("Key", "Value", "Name", "ValueType", "Group", "Description", "Enabled", "Sort", "UpdatedBy").
+			Select("Key", "Value", "Name", "ValueType", "Group", "Category", "Description", "Enabled", "Sort", "UpdatedBy").
 			Updates(config).
 			Error
 	})
@@ -72,6 +73,9 @@ func (q *Queries) ListSystemConfigs(ctx context.Context, filter SystemConfigList
 	if filter.Group != "" {
 		db = db.Where("config_group = ?", filter.Group)
 	}
+	if filter.Category != "" {
+		db = db.Where("category = ?", filter.Category)
+	}
 	if filter.Enabled != nil {
 		db = db.Where("enabled = ?", *filter.Enabled)
 	}
@@ -81,6 +85,7 @@ func (q *Queries) ListSystemConfigs(ctx context.Context, filter SystemConfigList
 		"key":       "config_key",
 		"name":      "name",
 		"group":     "config_group",
+		"category":  "category",
 		"enabled":   "enabled",
 		"sort":      "sort",
 		"createdAt": "created_at",
@@ -88,10 +93,13 @@ func (q *Queries) ListSystemConfigs(ctx context.Context, filter SystemConfigList
 	})
 }
 
-func (q *Queries) ListEnabledSystemConfigs(ctx context.Context, group string) ([]entity.SystemConfig, error) {
+func (q *Queries) ListEnabledSystemConfigs(ctx context.Context, group, category string) ([]entity.SystemConfig, error) {
 	db := q.db.WithContext(ctx).Where("enabled = ?", entity.ConfigEnabled)
 	if group != "" {
 		db = db.Where("config_group = ?", group)
+	}
+	if category != "" {
+		db = db.Where("category = ?", category)
 	}
 
 	var configs []entity.SystemConfig

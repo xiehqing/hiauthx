@@ -17,6 +17,7 @@ type CreateSystemConfigRequest struct {
 	Name        string `json:"name"`
 	ValueType   string `json:"valueType"`
 	Group       string `json:"group"`
+	Category    string `json:"category"`
 	Description string `json:"description"`
 	Enabled     *int   `json:"enabled"`
 	Sort        int    `json:"sort"`
@@ -30,6 +31,7 @@ type UpdateSystemConfigRequest struct {
 	Name        string `json:"name"`
 	ValueType   string `json:"valueType"`
 	Group       string `json:"group"`
+	Category    string `json:"category"`
 	Description string `json:"description"`
 	Enabled     int    `json:"enabled"`
 	Sort        int    `json:"sort"`
@@ -47,8 +49,9 @@ func (as *Service) CreateSystemConfig(ctx context.Context, req CreateSystemConfi
 	}
 	valueType := normalizeConfigValueType(req.ValueType)
 	group := normalizeConfigGroup(req.Group)
+	category := normalizeSystemConfigCategory(req.Category)
 
-	if err := validateSystemConfig(req.Key, req.Name, valueType, enabled); err != nil {
+	if err := validateSystemConfig(req.Key, req.Name, valueType, category, enabled); err != nil {
 		return nil, err
 	}
 
@@ -62,6 +65,7 @@ func (as *Service) CreateSystemConfig(ctx context.Context, req CreateSystemConfi
 		Name:        normalizeString(req.Name),
 		ValueType:   valueType,
 		Group:       group,
+		Category:    category,
 		Description: normalizeString(req.Description),
 		Enabled:     enabled,
 		Sort:        req.Sort,
@@ -80,7 +84,8 @@ func (as *Service) UpdateSystemConfig(ctx context.Context, req UpdateSystemConfi
 
 	valueType := normalizeConfigValueType(req.ValueType)
 	group := normalizeConfigGroup(req.Group)
-	if err := validateSystemConfig(req.Key, req.Name, valueType, req.Enabled); err != nil {
+	category := normalizeSystemConfigCategory(req.Category)
+	if err := validateSystemConfig(req.Key, req.Name, valueType, category, req.Enabled); err != nil {
 		return nil, err
 	}
 
@@ -94,6 +99,7 @@ func (as *Service) UpdateSystemConfig(ctx context.Context, req UpdateSystemConfi
 		Name:        normalizeString(req.Name),
 		ValueType:   valueType,
 		Group:       group,
+		Category:    category,
 		Description: normalizeString(req.Description),
 		Enabled:     req.Enabled,
 		Sort:        req.Sort,
@@ -136,15 +142,23 @@ func (as *Service) GetSystemConfigByKey(ctx context.Context, key string) (*entit
 
 func (as *Service) ListSystemConfigs(ctx context.Context, req ListSystemConfigsRequest) (ormx.PageResult[entity.SystemConfig], error) {
 	req.Group = normalizeString(req.Group)
+	req.Category = normalizeString(req.Category)
+	if req.Category != "" && !validSystemConfigCategory(req.Category) {
+		return ormx.PageResult[entity.SystemConfig]{}, fmt.Errorf("%w: 配置类别不合法", ErrInvalidArgument)
+	}
 	return as.queries.ListSystemConfigs(ctx, req.SystemConfigListFilter)
 }
 
-func (as *Service) ListEnabledSystemConfigs(ctx context.Context, group string) ([]entity.SystemConfig, error) {
-	return as.queries.ListEnabledSystemConfigs(ctx, normalizeString(group))
+func (as *Service) ListEnabledSystemConfigs(ctx context.Context, group, category string) ([]entity.SystemConfig, error) {
+	category = normalizeString(category)
+	if category != "" && !validSystemConfigCategory(category) {
+		return nil, fmt.Errorf("%w: 配置类别不合法", ErrInvalidArgument)
+	}
+	return as.queries.ListEnabledSystemConfigs(ctx, normalizeString(group), category)
 }
 
-func (as *Service) GetEnabledSystemConfigMap(ctx context.Context, group string) (map[string]string, error) {
-	configs, err := as.ListEnabledSystemConfigs(ctx, group)
+func (as *Service) GetEnabledSystemConfigMap(ctx context.Context, group, category string) (map[string]string, error) {
+	configs, err := as.ListEnabledSystemConfigs(ctx, group, category)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +177,7 @@ func (as *Service) DeleteSystemConfig(ctx context.Context, id int64) error {
 	return normalizeDBError(as.queries.DeleteSystemConfig(ctx, id))
 }
 
-func validateSystemConfig(key, name, valueType string, enabled int) error {
+func validateSystemConfig(key, name, valueType, category string, enabled int) error {
 	key = normalizeString(key)
 	if key == "" || !configKeyPattern.MatchString(key) {
 		return fmt.Errorf("%w: 配置键不合法", ErrInvalidArgument)
@@ -174,10 +188,25 @@ func validateSystemConfig(key, name, valueType string, enabled int) error {
 	if !validConfigValueType(valueType) {
 		return fmt.Errorf("%w: 配置值类型不合法", ErrInvalidArgument)
 	}
+	if !validSystemConfigCategory(category) {
+		return fmt.Errorf("%w: 配置类别不合法", ErrInvalidArgument)
+	}
 	if enabled != entity.ConfigDisabled && enabled != entity.ConfigEnabled {
 		return fmt.Errorf("%w: 启用状态不合法", ErrInvalidArgument)
 	}
 	return nil
+}
+
+func normalizeSystemConfigCategory(category string) string {
+	category = normalizeString(category)
+	if category == "" {
+		return entity.SystemConfigCategorySystem
+	}
+	return category
+}
+
+func validSystemConfigCategory(category string) bool {
+	return category == entity.SystemConfigCategorySystem || category == entity.SystemConfigCategorySite
 }
 
 func normalizeConfigValueType(valueType string) string {

@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"github.com/xiehqing/hiauthx/authorization"
+	"github.com/xiehqing/hiauthx/db/entity"
 	"github.com/xiehqing/hiauthx/db/queries"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -15,6 +16,8 @@ func (r *Router) registerSystemConfigRoutes(api *route.RouterGroup) {
 	configs.POST("", r.createSystemConfig)
 	configs.GET("/enabled", r.listEnabledSystemConfigs)
 	configs.GET("/enabled-map", r.getEnabledSystemConfigMap)
+	configs.GET("/system-settings", r.getSystemSettings)
+	configs.GET("/site-settings", r.getSiteSettings)
 	configs.GET("/by-key/:key", r.getSystemConfigByKey)
 	configs.GET("/:id", r.getSystemConfig)
 	configs.PUT("/:id", r.updateSystemConfig)
@@ -65,6 +68,7 @@ func (r *Router) listSystemConfigs(ctx context.Context, c *app.RequestContext) {
 		SystemConfigListFilter: queries.SystemConfigListFilter{
 			Pagination: pagination(c),
 			Group:      c.DefaultQuery("group", ""),
+			Category:   c.DefaultQuery("category", ""),
 			Enabled:    queryIntPtr(c, "enabled"),
 		},
 	}
@@ -73,12 +77,22 @@ func (r *Router) listSystemConfigs(ctx context.Context, c *app.RequestContext) {
 }
 
 func (r *Router) listEnabledSystemConfigs(ctx context.Context, c *app.RequestContext) {
-	data, err := r.service.ListEnabledSystemConfigs(ctx, c.DefaultQuery("group", ""))
+	data, err := r.service.ListEnabledSystemConfigs(ctx, c.DefaultQuery("group", ""), c.DefaultQuery("category", ""))
 	handleData(c, data, err)
 }
 
 func (r *Router) getEnabledSystemConfigMap(ctx context.Context, c *app.RequestContext) {
-	data, err := r.service.GetEnabledSystemConfigMap(ctx, c.DefaultQuery("group", ""))
+	data, err := r.service.GetEnabledSystemConfigMap(ctx, c.DefaultQuery("group", ""), c.DefaultQuery("category", ""))
+	handleData(c, data, err)
+}
+
+func (r *Router) getSystemSettings(ctx context.Context, c *app.RequestContext) {
+	data, err := r.service.GetEnabledSystemConfigMap(ctx, c.DefaultQuery("group", ""), entity.SystemConfigCategorySystem)
+	handleData(c, data, err)
+}
+
+func (r *Router) getSiteSettings(ctx context.Context, c *app.RequestContext) {
+	data, err := r.service.GetEnabledSystemConfigMap(ctx, c.DefaultQuery("group", ""), entity.SystemConfigCategorySite)
 	handleData(c, data, err)
 }
 

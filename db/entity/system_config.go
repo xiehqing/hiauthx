@@ -14,6 +14,9 @@ const (
 
 	ConfigDisabled = 0
 	ConfigEnabled  = 1
+
+	SystemConfigCategorySystem = "system"
+	SystemConfigCategorySite   = "site"
 )
 
 const (
@@ -43,6 +46,7 @@ type SystemConfig struct {
 	Name        string `json:"name" gorm:"type:varchar(128);not null;comment:'配置名称'"`
 	ValueType   string `json:"valueType" gorm:"type:varchar(32);not null;default:'string';comment:'配置值类型'"`
 	Group       string `json:"group" gorm:"column:config_group;type:varchar(64);not null;default:'default';index;comment:'配置分组'"`
+	Category    string `json:"category" gorm:"type:varchar(32);not null;default:'system';index;comment:'配置类别：system系统设置，site网站配置'"`
 	Description string `json:"description" gorm:"type:varchar(255);comment:'配置描述'"`
 	Enabled     int    `json:"enabled" gorm:"type:int(11);not null;default:1;index;comment:'是否启用：0禁用，1启用'"`
 	Sort        int    `json:"sort" gorm:"type:int(11);not null;default:0;comment:'排序'"`

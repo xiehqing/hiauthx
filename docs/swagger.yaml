@@ -585,6 +585,12 @@ paths:
           schema:
             type: string
           description: 配置分组
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [system, site]
+          description: 配置类别，system 系统设置，site 网站配置
         - name: enabled
           in: query
           schema:
@@ -627,6 +633,12 @@ paths:
           schema:
             type: string
           description: 配置分组，不传返回所有启用配置
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [system, site]
+          description: 配置类别，system 系统设置，site 网站配置
       responses:
         "200":
           description: 启用配置列表
@@ -645,9 +657,51 @@ paths:
           schema:
             type: string
           description: 配置分组，不传返回所有启用配置
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [system, site]
+          description: 配置类别，system 系统设置，site 网站配置
       responses:
         "200":
           description: 启用配置键值对
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigMapResponse"
+
+  /api/v1/system-configs/system-settings:
+    get:
+      tags: [系统配置]
+      summary: 获取系统设置
+      parameters:
+        - name: group
+          in: query
+          schema:
+            type: string
+          description: 配置分组，不传返回所有启用系统设置
+      responses:
+        "200":
+          description: 系统设置键值对
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigMapResponse"
+
+  /api/v1/system-configs/site-settings:
+    get:
+      tags: [系统配置]
+      summary: 获取网站配置
+      parameters:
+        - name: group
+          in: query
+          schema:
+            type: string
+          description: 配置分组，不传返回所有启用网站配置
+      responses:
+        "200":
+          description: 网站配置键值对
           content:
             application/json:
               schema:
@@ -1181,6 +1235,10 @@ components:
             group:
               type: string
               example: basic
+            category:
+              type: string
+              enum: [system, site]
+              description: 配置类别，system 系统设置，site 网站配置
             description:
               type: string
             enabled:
@@ -1538,6 +1596,11 @@ components:
         group:
           type: string
           default: default
+        category:
+          type: string
+          enum: [system, site]
+          default: system
+          description: 配置类别，system 系统设置，site 网站配置
         description:
           type: string
         enabled:
