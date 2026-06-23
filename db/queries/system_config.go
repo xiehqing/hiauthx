@@ -23,13 +23,34 @@ func (q *Queries) CreateSystemConfig(ctx context.Context, config *entity.SystemC
 
 func (q *Queries) UpdateSystemConfig(ctx context.Context, config *entity.SystemConfig) error {
 	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return tx.
-			Model(&entity.SystemConfig{}).
-			Where("id = ?", config.ID).
-			Select("Key", "Value", "Name", "ValueType", "Group", "Category", "Description", "Enabled", "Sort", "UpdatedBy").
-			Updates(config).
-			Error
+		return updateSystemConfigTx(tx, config)
 	})
+}
+
+func (q *Queries) SaveSystemConfigs(ctx context.Context, configs []*entity.SystemConfig) error {
+	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for _, config := range configs {
+			if config.ID <= 0 {
+				if err := tx.Create(config).Error; err != nil {
+					return err
+				}
+				continue
+			}
+			if err := updateSystemConfigTx(tx, config); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func updateSystemConfigTx(tx *gorm.DB, config *entity.SystemConfig) error {
+	return tx.
+		Model(&entity.SystemConfig{}).
+		Where("id = ?", config.ID).
+		Select("Key", "Value", "Name", "ValueType", "Group", "Category", "VisibleWhenKey", "VisibleWhenValue", "Description", "Enabled", "Sort", "UpdatedBy").
+		Updates(config).
+		Error
 }
 
 func (q *Queries) GetSystemConfig(ctx context.Context, id int64) (*entity.SystemConfig, error) {
@@ -81,15 +102,16 @@ func (q *Queries) ListSystemConfigs(ctx context.Context, filter SystemConfigList
 	}
 
 	return ormx.Paginate[entity.SystemConfig](db, filter.Pagination, map[string]string{
-		"id":        "id",
-		"key":       "config_key",
-		"name":      "name",
-		"group":     "config_group",
-		"category":  "category",
-		"enabled":   "enabled",
-		"sort":      "sort",
-		"createdAt": "created_at",
-		"updatedAt": "updated_at",
+		"id":             "id",
+		"key":            "config_key",
+		"name":           "name",
+		"group":          "config_group",
+		"category":       "category",
+		"visibleWhenKey": "visible_when_key",
+		"enabled":        "enabled",
+		"sort":           "sort",
+		"createdAt":      "created_at",
+		"updatedAt":      "updated_at",
 	})
 }
 

@@ -13,7 +13,11 @@ import (
 func RefreshManager(ctx context.Context, q *queries.Queries) {
 	config := configx.New(q)
 	manager := core.NewBuilder().
-		Storage(NewStorage(config.String(ctx, entity.SecurityTokenStorage, ""))).
+		Storage(NewStorage(
+			config.String(ctx, entity.SecurityTokenStorageType, ""),
+			config.String(ctx, entity.SecurityTokenRedisConfig, ""),
+			config.String(ctx, entity.SecurityTokenStorage, ""),
+		)).
 		TokenName("accessToken").
 		AutoRenew(true).
 		Timeout(config.Int64(ctx, entity.SecurityTokenExpireMinutes, 1440) * 60).

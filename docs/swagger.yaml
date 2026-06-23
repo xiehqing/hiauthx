@@ -707,6 +707,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/SystemConfigMapResponse"
 
+  /api/v1/system-configs/batch:
+    put:
+      tags: [系统配置]
+      summary: 批量保存系统配置
+      description: 支持按 id 或 key 批量保存；已有配置可只传 value，未存在的 key 需要提供 name 等必填元数据。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchSaveSystemConfigsRequest"
+      responses:
+        "200":
+          description: 批量保存成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /api/v1/system-configs/by-key/{key}:
     get:
       tags: [系统配置]
@@ -1231,7 +1252,7 @@ components:
               example: 系统名称
             valueType:
               type: string
-              enum: [string, number, bool, json]
+              enum: [string, number, bool, json, enum]
             group:
               type: string
               example: basic
@@ -1239,6 +1260,12 @@ components:
               type: string
               enum: [system, site]
               description: 配置类别，system 系统设置，site 网站配置
+            visibleWhenKey:
+              type: string
+              description: 展示条件配置键；为空表示始终展示
+            visibleWhenValue:
+              type: string
+              description: 展示条件配置值；仅当 visibleWhenKey 对应配置值匹配时展示
             description:
               type: string
             enabled:
@@ -1591,7 +1618,7 @@ components:
           type: string
         valueType:
           type: string
-          enum: [string, number, bool, json]
+          enum: [string, number, bool, json, enum]
           default: string
         group:
           type: string
@@ -1601,6 +1628,12 @@ components:
           enum: [system, site]
           default: system
           description: 配置类别，system 系统设置，site 网站配置
+        visibleWhenKey:
+          type: string
+          description: 展示条件配置键；为空表示始终展示
+        visibleWhenValue:
+          type: string
+          description: 展示条件配置值；仅当 visibleWhenKey 对应配置值匹配时展示
         description:
           type: string
         enabled:
@@ -1615,6 +1648,63 @@ components:
     UpdateSystemConfigRequest:
       allOf:
         - $ref: "#/components/schemas/CreateSystemConfigRequest"
+
+    BatchSaveSystemConfigsRequest:
+      type: object
+      required: [items]
+      properties:
+        operator:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BatchSaveSystemConfigItem"
+
+    BatchSaveSystemConfigItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 配置 ID；传 id 时优先按 id 更新
+        key:
+          type: string
+          description: 配置键；未传 id 时按 key 更新或新增
+        value:
+          type: string
+          description: 配置值；已有配置可只传 id/key 和 value
+        name:
+          type: string
+          description: 配置名称；新增配置时必填
+        valueType:
+          type: string
+          enum: [string, number, bool, json, enum]
+          description: 配置值类型；不传则沿用已有配置，新增默认 string
+        group:
+          type: string
+          description: 配置分组；不传则沿用已有配置，新增默认 default
+        category:
+          type: string
+          enum: [system, site]
+          description: 配置类别；不传则沿用已有配置，新增默认 system
+        visibleWhenKey:
+          type: string
+          description: 展示条件配置键
+        visibleWhenValue:
+          type: string
+          description: 展示条件配置值
+        description:
+          type: string
+        enabled:
+          type: integer
+          enum: [0, 1]
+          description: 是否启用；不传则沿用已有配置，新增默认 1
+        sort:
+          type: integer
+          description: 排序；不传则沿用已有配置，新增默认 0
+        operator:
+          type: string
+          description: 当前项操作人；优先级高于批量请求 operator
 
     CreateAPIRequest:
       type: object

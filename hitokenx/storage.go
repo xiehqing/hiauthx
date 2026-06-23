@@ -35,8 +35,17 @@ type StorageConfig struct {
 	OperationTimeoutSeconds int    `json:"operationTimeoutSeconds"`
 }
 
-func NewStorage(value string) adapter.Storage {
-	storage, err := newStorage(value)
+func NewStorage(storageType string, values ...string) adapter.Storage {
+	redisValue := ""
+	legacyValue := ""
+	if len(values) > 0 {
+		redisValue = values[0]
+	}
+	if len(values) > 1 {
+		legacyValue = values[1]
+	}
+
+	storage, err := newStorage(storageType, redisValue, legacyValue)
 	if err != nil {
 		logs.Errorf("storage.New: build token storage failed.")
 		return memory.NewStorage()
@@ -44,24 +53,42 @@ func NewStorage(value string) adapter.Storage {
 	return storage
 }
 
-func newStorage(value string) (adapter.Storage, error) {
-	if strings.TrimSpace(value) == "" {
-		return memory.NewStorage(), nil
+func newStorage(storageType, redisValue, legacyValue string) (adapter.Storage, error) {
+	storageType = strings.ToLower(strings.TrimSpace(storageType))
+	if storageType == "" && strings.TrimSpace(legacyValue) != "" {
+		config, err := parseStorageConfig(legacyValue)
+		if err != nil {
+			return nil, err
+		}
+		storageType = strings.ToLower(strings.TrimSpace(config.Type))
+		if storageType == "redis" {
+			return newRedisStorage(config)
+		}
 	}
 
-	var config StorageConfig
-	if err := json.Unmarshal([]byte(value), &config); err != nil {
-		return nil, err
-	}
-
-	switch strings.ToLower(strings.TrimSpace(config.Type)) {
+	switch storageType {
 	case "", "memory":
 		return memory.NewStorage(), nil
 	case "redis":
+		config, err := parseStorageConfig(redisValue)
+		if err != nil {
+			return nil, err
+		}
 		return newRedisStorage(config)
 	default:
 		return memory.NewStorage(), nil
 	}
+}
+
+func parseStorageConfig(value string) (StorageConfig, error) {
+	var config StorageConfig
+	if strings.TrimSpace(value) == "" {
+		return config, nil
+	}
+	if err := json.Unmarshal([]byte(value), &config); err != nil {
+		return StorageConfig{}, err
+	}
+	return config, nil
 }
 
 func newRedisStorage(config StorageConfig) (adapter.Storage, error) {

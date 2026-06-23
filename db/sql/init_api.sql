@@ -72,6 +72,7 @@ VALUES
   ('查询启用配置映射', 'GET', '/api/v1/system-configs/enabled-map', '系统配置管理', 'query', '查询启用的系统配置映射', 'system_config', 1, 630, NOW(), 'system', NOW(), 'system'),
   ('查询系统设置', 'GET', '/api/v1/system-configs/system-settings', '系统配置管理', 'query', '查询启用的系统设置键值对', 'system_config', 1, 632, NOW(), 'system', NOW(), 'system'),
   ('查询网站配置', 'GET', '/api/v1/system-configs/site-settings', '系统配置管理', 'query', '查询启用的网站配置键值对', 'system_config', 1, 634, NOW(), 'system', NOW(), 'system'),
+  ('批量保存系统配置', 'PUT', '/api/v1/system-configs/batch', '系统配置管理', 'update', '批量保存系统配置', 'system_config', 1, 636, NOW(), 'system', NOW(), 'system'),
   ('按键查询系统配置', 'GET', '/api/v1/system-configs/by-key/:key', '系统配置管理', 'query', '按配置键查询系统配置', 'system_config', 1, 640, NOW(), 'system', NOW(), 'system'),
   ('查询系统配置详情', 'GET', '/api/v1/system-configs/:id', '系统配置管理', 'query', '查询系统配置详情', 'system_config', 1, 650, NOW(), 'system', NOW(), 'system'),
   ('更新系统配置', 'PUT', '/api/v1/system-configs/:id', '系统配置管理', 'update', '更新系统配置', 'system_config', 1, 660, NOW(), 'system', NOW(), 'system'),

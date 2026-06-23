@@ -18,6 +18,7 @@ func (r *Router) registerSystemConfigRoutes(api *route.RouterGroup) {
 	configs.GET("/enabled", r.listEnabledSystemConfigs)
 	configs.GET("/enabled-map", r.getEnabledSystemConfigMap)
 	configs.GET("/system-settings", r.getSystemSettings)
+	configs.PUT("/batch", r.batchSaveSystemConfigs)
 	configs.GET("/by-key/:key", r.getSystemConfigByKey)
 	configs.GET("/:id", r.getSystemConfig)
 	configs.PUT("/:id", r.updateSystemConfig)
@@ -45,6 +46,15 @@ func (r *Router) updateSystemConfig(ctx context.Context, c *app.RequestContext) 
 	}
 	req.ID = id
 	data, err := r.service.UpdateSystemConfig(ctx, req)
+	handleData(c, data, err)
+}
+
+func (r *Router) batchSaveSystemConfigs(ctx context.Context, c *app.RequestContext) {
+	var req authorization.BatchSaveSystemConfigsRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+	data, err := r.service.BatchSaveSystemConfigs(ctx, req)
 	handleData(c, data, err)
 }
 
