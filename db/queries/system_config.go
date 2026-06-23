@@ -48,7 +48,7 @@ func updateSystemConfigTx(tx *gorm.DB, config *entity.SystemConfig) error {
 	return tx.
 		Model(&entity.SystemConfig{}).
 		Where("id = ?", config.ID).
-		Select("Key", "Value", "Name", "ValueType", "Group", "Category", "VisibleWhenKey", "VisibleWhenValue", "Description", "Enabled", "Sort", "UpdatedBy").
+		Select("Key", "Value", "Name", "ValueType", "Options", "Group", "Category", "VisibleWhenKey", "VisibleWhenValue", "Description", "Enabled", "Sort", "UpdatedBy").
 		Updates(config).
 		Error
 }

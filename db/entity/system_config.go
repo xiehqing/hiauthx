@@ -48,6 +48,7 @@ type SystemConfig struct {
 	Value            string `json:"value" gorm:"column:config_value;type:text;comment:'配置值'"`
 	Name             string `json:"name" gorm:"type:varchar(128);not null;comment:'配置名称'"`
 	ValueType        string `json:"valueType" gorm:"type:varchar(32);not null;default:'string';comment:'配置值类型'"`
+	Options          string `json:"options" gorm:"type:text;comment:'配置选项 JSON'"`
 	Group            string `json:"group" gorm:"column:config_group;type:varchar(64);not null;default:'default';index;comment:'配置分组'"`
 	Category         string `json:"category" gorm:"type:varchar(32);not null;default:'system';index;comment:'配置类别：system系统设置，site网站配置'"`
 	VisibleWhenKey   string `json:"visibleWhenKey" gorm:"type:varchar(128);comment:'展示条件配置键'"`

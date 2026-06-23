@@ -1253,6 +1253,9 @@ components:
             valueType:
               type: string
               enum: [string, number, bool, json, enum]
+            options:
+              type: string
+              description: enum 类型选项 JSON，例如 [{"label":"内存","value":"memory"}]
             group:
               type: string
               example: basic
@@ -1620,6 +1623,9 @@ components:
           type: string
           enum: [string, number, bool, json, enum]
           default: string
+        options:
+          type: string
+          description: enum 类型选项 JSON，例如 [{"label":"内存","value":"memory"}]
         group:
           type: string
           default: default
@@ -1680,6 +1686,9 @@ components:
           type: string
           enum: [string, number, bool, json, enum]
           description: 配置值类型；不传则沿用已有配置，新增默认 string
+        options:
+          type: string
+          description: enum 类型选项 JSON；不传则沿用已有配置
         group:
           type: string
           description: 配置分组；不传则沿用已有配置，新增默认 default

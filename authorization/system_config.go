@@ -18,6 +18,7 @@ type CreateSystemConfigRequest struct {
 	Value            string `json:"value"`
 	Name             string `json:"name"`
 	ValueType        string `json:"valueType"`
+	Options          string `json:"options"`
 	Group            string `json:"group"`
 	Category         string `json:"category"`
 	VisibleWhenKey   string `json:"visibleWhenKey"`
@@ -34,6 +35,7 @@ type UpdateSystemConfigRequest struct {
 	Value            string `json:"value"`
 	Name             string `json:"name"`
 	ValueType        string `json:"valueType"`
+	Options          string `json:"options"`
 	Group            string `json:"group"`
 	Category         string `json:"category"`
 	VisibleWhenKey   string `json:"visibleWhenKey"`
@@ -55,6 +57,7 @@ type BatchSaveSystemConfigItem struct {
 	Value            *string `json:"value"`
 	Name             *string `json:"name"`
 	ValueType        *string `json:"valueType"`
+	Options          *string `json:"options"`
 	Group            *string `json:"group"`
 	Category         *string `json:"category"`
 	VisibleWhenKey   *string `json:"visibleWhenKey"`
@@ -86,6 +89,10 @@ func (as *Service) CreateSystemConfig(ctx context.Context, req CreateSystemConfi
 	if err := validateSystemConfigValue(key, valueType, value); err != nil {
 		return nil, err
 	}
+	options := normalizeString(req.Options)
+	if err := validateSystemConfigOptions(valueType, options); err != nil {
+		return nil, err
+	}
 
 	config := &entity.SystemConfig{
 		BaseModel: ormx.BaseModel{
@@ -96,6 +103,7 @@ func (as *Service) CreateSystemConfig(ctx context.Context, req CreateSystemConfi
 		Value:            value,
 		Name:             normalizeString(req.Name),
 		ValueType:        valueType,
+		Options:          options,
 		Group:            group,
 		Category:         category,
 		VisibleWhenKey:   normalizeString(req.VisibleWhenKey),
@@ -127,6 +135,10 @@ func (as *Service) UpdateSystemConfig(ctx context.Context, req UpdateSystemConfi
 	if err := validateSystemConfigValue(key, valueType, value); err != nil {
 		return nil, err
 	}
+	options := normalizeString(req.Options)
+	if err := validateSystemConfigOptions(valueType, options); err != nil {
+		return nil, err
+	}
 
 	config := &entity.SystemConfig{
 		BaseModel: ormx.BaseModel{
@@ -137,6 +149,7 @@ func (as *Service) UpdateSystemConfig(ctx context.Context, req UpdateSystemConfi
 		Value:            value,
 		Name:             normalizeString(req.Name),
 		ValueType:        valueType,
+		Options:          options,
 		Group:            group,
 		Category:         category,
 		VisibleWhenKey:   normalizeString(req.VisibleWhenKey),
@@ -366,6 +379,7 @@ func buildNewBatchSystemConfig(item BatchSaveSystemConfigItem, operator string) 
 	}
 	name := stringValue(item.Name, "")
 	valueType := normalizeConfigValueType(stringValue(item.ValueType, ""))
+	options := normalizeString(stringValue(item.Options, ""))
 	group := normalizeConfigGroup(stringValue(item.Group, ""))
 	category := normalizeSystemConfigCategory(stringValue(item.Category, ""))
 	enabled := intValue(item.Enabled, entity.ConfigEnabled)
@@ -375,6 +389,9 @@ func buildNewBatchSystemConfig(item BatchSaveSystemConfigItem, operator string) 
 		return nil, err
 	}
 	if err := validateSystemConfigValue(key, valueType, value); err != nil {
+		return nil, err
+	}
+	if err := validateSystemConfigOptions(valueType, options); err != nil {
 		return nil, err
 	}
 
@@ -388,6 +405,7 @@ func buildNewBatchSystemConfig(item BatchSaveSystemConfigItem, operator string) 
 		Value:            value,
 		Name:             normalizeString(name),
 		ValueType:        valueType,
+		Options:          options,
 		Group:            group,
 		Category:         category,
 		VisibleWhenKey:   normalizeString(stringValue(item.VisibleWhenKey, "")),
@@ -411,6 +429,9 @@ func mergeBatchSystemConfig(existing entity.SystemConfig, item BatchSaveSystemCo
 	}
 	if item.ValueType != nil {
 		config.ValueType = normalizeConfigValueType(*item.ValueType)
+	}
+	if item.Options != nil {
+		config.Options = normalizeString(*item.Options)
 	}
 	if item.Group != nil {
 		config.Group = normalizeConfigGroup(*item.Group)
@@ -440,6 +461,9 @@ func mergeBatchSystemConfig(existing entity.SystemConfig, item BatchSaveSystemCo
 		return nil, err
 	}
 	if err := validateSystemConfigValue(config.Key, config.ValueType, config.Value); err != nil {
+		return nil, err
+	}
+	if err := validateSystemConfigOptions(config.ValueType, config.Options); err != nil {
 		return nil, err
 	}
 	return &config, nil
@@ -496,6 +520,20 @@ func validateSystemConfigValue(key, valueType, value string) error {
 		if normalizeString(value) != "" && !json.Valid([]byte(value)) {
 			return fmt.Errorf("%w: Token Redis 配置不是合法 JSON", ErrInvalidArgument)
 		}
+	}
+	return nil
+}
+
+func validateSystemConfigOptions(valueType, options string) error {
+	options = normalizeString(options)
+	if options == "" {
+		return nil
+	}
+	if valueType != entity.ConfigValueTypeEnum {
+		return fmt.Errorf("%w: 只有 enum 类型支持配置选项", ErrInvalidArgument)
+	}
+	if !json.Valid([]byte(options)) {
+		return fmt.Errorf("%w: 配置选项不是合法 JSON", ErrInvalidArgument)
 	}
 	return nil
 }
