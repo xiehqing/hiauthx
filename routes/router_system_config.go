@@ -11,13 +11,13 @@ import (
 )
 
 func (r *Router) registerSystemConfigRoutes(api *route.RouterGroup) {
+	api.GET("/system-configs/site-settings", r.getSiteSettings)
 	configs := api.Group("/system-configs", checkLogin())
 	configs.GET("", r.listSystemConfigs)
 	configs.POST("", r.createSystemConfig)
 	configs.GET("/enabled", r.listEnabledSystemConfigs)
 	configs.GET("/enabled-map", r.getEnabledSystemConfigMap)
 	configs.GET("/system-settings", r.getSystemSettings)
-	configs.GET("/site-settings", r.getSiteSettings)
 	configs.GET("/by-key/:key", r.getSystemConfigByKey)
 	configs.GET("/:id", r.getSystemConfig)
 	configs.PUT("/:id", r.updateSystemConfig)
