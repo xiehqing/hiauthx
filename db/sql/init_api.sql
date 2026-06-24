@@ -85,8 +85,9 @@ VALUES
   ('更新 API', 'PUT', '/api/v1/apis/:id', 'API 管理', 'update', '更新 API 元数据', 'api', 1, 730, NOW(), 'system', NOW(), 'system'),
   ('删除 API', 'DELETE', '/api/v1/apis/:id', 'API 管理', 'delete', '删除 API 元数据', 'api', 1, 740, NOW(), 'system', NOW(), 'system'),
 
-  ('查询审计日志列表', 'GET', '/api/v1/audit-logs', '操作审计', 'query', '查询操作审计日志列表', 'audit_log', 1, 800, NOW(), 'system', NOW(), 'system'),
-  ('查询审计日志详情', 'GET', '/api/v1/audit-logs/:id', '操作审计', 'query', '查询操作审计日志详情', 'audit_log', 1, 810, NOW(), 'system', NOW(), 'system')
+  ('查询操作日志列表', 'GET', '/api/v1/operation-logs', '操作日志', 'query', '查询用户操作行为日志列表', 'operation_log', 1, 790, NOW(), 'system', NOW(), 'system'),
+  ('查询审计日志列表', 'GET', '/api/v1/audit-logs', '审计日志', 'query', '查询审计日志列表', 'audit_log', 1, 800, NOW(), 'system', NOW(), 'system'),
+  ('查询审计日志详情', 'GET', '/api/v1/audit-logs/:id', '审计日志', 'query', '查询审计日志详情', 'audit_log', 1, 810, NOW(), 'system', NOW(), 'system')
 ON DUPLICATE KEY UPDATE
   `name` = VALUES(`name`),
   `module` = VALUES(`module`),

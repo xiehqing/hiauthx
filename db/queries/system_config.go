@@ -16,19 +16,25 @@ type SystemConfigListFilter struct {
 }
 
 func (q *Queries) CreateSystemConfig(ctx context.Context, config *entity.SystemConfig) error {
-	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return tx.Create(config).Error
-	})
+	}); err != nil {
+		return err
+	}
+	return q.refreshSystemConfigCache(ctx)
 }
 
 func (q *Queries) UpdateSystemConfig(ctx context.Context, config *entity.SystemConfig) error {
-	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return updateSystemConfigTx(tx, config)
-	})
+	}); err != nil {
+		return err
+	}
+	return q.refreshSystemConfigCache(ctx)
 }
 
 func (q *Queries) SaveSystemConfigs(ctx context.Context, configs []*entity.SystemConfig) error {
-	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, config := range configs {
 			if config.ID <= 0 {
 				if err := tx.Create(config).Error; err != nil {
@@ -41,7 +47,10 @@ func (q *Queries) SaveSystemConfigs(ctx context.Context, configs []*entity.Syste
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	return q.refreshSystemConfigCache(ctx)
 }
 
 func updateSystemConfigTx(tx *gorm.DB, config *entity.SystemConfig) error {
@@ -63,16 +72,20 @@ func (q *Queries) GetSystemConfig(ctx context.Context, id int64) (*entity.System
 }
 
 func (q *Queries) GetSystemConfigByKey(ctx context.Context, key string) (*entity.SystemConfig, error) {
+	if config, ok := q.systemConfigCache.get(key); ok {
+		return &config, nil
+	}
 	var config entity.SystemConfig
 	err := q.db.WithContext(ctx).First(&config, "config_key = ?", key).Error
 	if err != nil {
 		return nil, ormx.NotFoundAsNil(err)
 	}
+	_ = q.refreshSystemConfigCache(ctx)
 	return &config, nil
 }
 
 func (q *Queries) DeleteSystemConfig(ctx context.Context, id int64) error {
-	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		config := entity.SystemConfig{BaseModel: ormx.BaseModel{ID: id}}
 		result := tx.Delete(&config)
 		if result.Error != nil {
@@ -82,7 +95,10 @@ func (q *Queries) DeleteSystemConfig(ctx context.Context, id int64) error {
 			return gorm.ErrRecordNotFound
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	return q.refreshSystemConfigCache(ctx)
 }
 
 func (q *Queries) ListSystemConfigs(ctx context.Context, filter SystemConfigListFilter) (ormx.PageResult[entity.SystemConfig], error) {
@@ -130,10 +146,13 @@ func (q *Queries) ListEnabledSystemConfigs(ctx context.Context, group, category 
 }
 
 func (q *Queries) GetSystemConfigValueByKey(ctx context.Context, key string) (string, error) {
-	var config entity.SystemConfig
-	err := q.db.WithContext(ctx).First(&config, "config_key = ?", key).Error
-	if err != nil {
-		return "", ormx.NotFoundAsNil(err)
+	config, ok := q.systemConfigCache.get(key)
+	if !ok {
+		item, err := q.GetSystemConfigByKey(ctx, key)
+		if err != nil || item == nil {
+			return "", err
+		}
+		return item.Value, nil
 	}
 	return config.Value, nil
 }
@@ -144,4 +163,10 @@ func (q *Queries) GetSystemConfigBoolValueByKey(ctx context.Context, key string,
 		return defaultValue
 	}
 	return entity.ConfigBool(configValue)
+}
+
+func (q *Queries) listAllSystemConfigs(ctx context.Context) ([]entity.SystemConfig, error) {
+	var configs []entity.SystemConfig
+	err := q.db.WithContext(ctx).Find(&configs).Error
+	return configs, err
 }

@@ -8,14 +8,16 @@ import (
 )
 
 type Queries struct {
-	db    *gorm.DB
-	audit *audit.Queries
+	db                *gorm.DB
+	audit             *audit.Queries
+	systemConfigCache *systemConfigCache
 }
 
 func New(db *gorm.DB, audit *audit.Queries) *Queries {
 	q := &Queries{
-		db:    db,
-		audit: audit,
+		db:                db,
+		audit:             audit,
+		systemConfigCache: newSystemConfigCache(),
 	}
 	return q
 }
@@ -25,7 +27,7 @@ func (q *Queries) DB() *gorm.DB {
 }
 
 func (q *Queries) AutoMigrate(ctx context.Context) error {
-	return q.db.WithContext(ctx).AutoMigrate(
+	if err := q.db.WithContext(ctx).AutoMigrate(
 		&entity.User{},
 		&entity.Role{},
 		&entity.Department{},
@@ -34,7 +36,10 @@ func (q *Queries) AutoMigrate(ctx context.Context) error {
 		&entity.API{},
 		&entity.AuditLog{},
 		&entity.AuditChange{},
-	)
+	); err != nil {
+		return err
+	}
+	return q.RefreshSystemConfigCache(ctx)
 }
 
 func normalizeDataIDs(ids []int64) []int64 {

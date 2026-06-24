@@ -12,6 +12,14 @@ type ListAuditLogsRequest struct {
 	queries.AuditLogListFilter
 }
 
+type ListOperationLogsRequest struct {
+	queries.AuditLogListFilter
+}
+
+func (as *Service) ListOperationLogs(ctx context.Context, req ListOperationLogsRequest) (ormx.PageResult[queries.OperationLog], error) {
+	return as.queries.ListOperationLogs(ctx, req.AuditLogListFilter)
+}
+
 func (as *Service) ListAuditLogs(ctx context.Context, req ListAuditLogsRequest) (ormx.PageResult[entity.AuditLog], error) {
 	return as.queries.ListAuditLogs(ctx, req.AuditLogListFilter)
 }

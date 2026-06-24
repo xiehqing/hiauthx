@@ -23,6 +23,23 @@ type AuditLogListFilter struct {
 	EndTime      *time.Time
 }
 
+// OperationLog is a lightweight view of audit_log for user operation behavior display.
+type OperationLog struct {
+	ID           int64     `json:"id"`
+	CreatedAt    time.Time `json:"createdAt"`
+	OperatorID   int64     `json:"operatorId"`
+	OperatorName string    `json:"operatorName"`
+	Module       string    `json:"module"`
+	Action       string    `json:"action"`
+	Description  string    `json:"description"`
+	Method       string    `json:"method"`
+	Path         string    `json:"path"`
+	IP           string    `json:"ip"`
+	Status       string    `json:"status"`
+	ErrorMessage string    `json:"errorMessage"`
+	DurationMs   int64     `json:"durationMs"`
+}
+
 // RequestAudit describes an operation-level audit that is not produced by a GORM data callback.
 type RequestAudit struct {
 	Module       string
@@ -41,6 +58,12 @@ func (q *Queries) AuditAssociation(ctx context.Context, tx *gorm.DB, resourceTyp
 
 // CreateRequestAudit persists a request-level audit entry such as login, logout, or query.
 func (q *Queries) CreateRequestAudit(ctx context.Context, request RequestAudit) error {
+	if !q.GetSystemConfigBoolValueByKey(ctx, entity.AuditLogEnabled, true) {
+		return nil
+	}
+	if requestAuditAction(request.Action) == entity.AuditOperationQuery && !q.GetSystemConfigBoolValueByKey(ctx, entity.AuditLogIncludeQuery, true) {
+		return nil
+	}
 	auditContext, _ := audit.FromContext(ctx)
 	log := entity.AuditLog{
 		RequestID:    auditContext.RequestID,
@@ -77,6 +100,13 @@ func (q *Queries) CreateRequestAudit(ctx context.Context, request RequestAudit) 
 	return q.db.Session(&gorm.Session{SkipHooks: true}).WithContext(ctx).Create(&log).Error
 }
 
+func requestAuditAction(action string) string {
+	if action == "" {
+		return entity.AuditOperationQuery
+	}
+	return action
+}
+
 // auditRequestDescription builds the default description for request-level audit logs.
 func auditRequestDescription(action, resourceType, path string) string {
 	switch action {
@@ -104,6 +134,21 @@ func (q *Queries) GetAuditLog(ctx context.Context, id int64) (*entity.AuditLog, 
 // ListAuditLogs returns paged audit logs using keyword, resource, status, and time filters.
 func (q *Queries) ListAuditLogs(ctx context.Context, filter AuditLogListFilter) (ormx.PageResult[entity.AuditLog], error) {
 	db := q.db.WithContext(ctx).Model(&entity.AuditLog{})
+	db = applyAuditLogFilters(db, filter)
+
+	return ormx.Paginate[entity.AuditLog](db, filter.Pagination, auditLogSortMap())
+}
+
+func (q *Queries) ListOperationLogs(ctx context.Context, filter AuditLogListFilter) (ormx.PageResult[OperationLog], error) {
+	db := q.db.WithContext(ctx).
+		Model(&entity.AuditLog{}).
+		Select("id", "created_at", "operator_id", "operator_name", "module", "action", "description", "method", "path", "ip", "status", "error_message", "duration_ms")
+	db = applyAuditLogFilters(db, filter)
+
+	return ormx.Paginate[OperationLog](db, filter.Pagination, auditLogSortMap())
+}
+
+func applyAuditLogFilters(db *gorm.DB, filter AuditLogListFilter) *gorm.DB {
 	if ormx.KeywordPresent(filter.Keyword) {
 		keyword := ormx.LikeKeyword(filter.Keyword)
 		db = db.Where("operator_name LIKE ? OR description LIKE ? OR path LIKE ?", keyword, keyword, keyword)
@@ -132,8 +177,11 @@ func (q *Queries) ListAuditLogs(ctx context.Context, filter AuditLogListFilter) 
 	if filter.EndTime != nil {
 		db = db.Where("created_at <= ?", *filter.EndTime)
 	}
+	return db
+}
 
-	return ormx.Paginate[entity.AuditLog](db, filter.Pagination, map[string]string{
+func auditLogSortMap() map[string]string {
+	return map[string]string{
 		"id":           "id",
 		"operatorName": "operator_name",
 		"module":       "module",
@@ -144,5 +192,5 @@ func (q *Queries) ListAuditLogs(ctx context.Context, filter AuditLogListFilter) 
 		"durationMs":   "duration_ms",
 		"createdAt":    "created_at",
 		"updatedAt":    "updated_at",
-	})
+	}
 }

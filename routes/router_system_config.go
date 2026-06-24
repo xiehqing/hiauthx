@@ -2,6 +2,8 @@ package routes
 
 import (
 	"context"
+	"strings"
+
 	"github.com/xiehqing/hiauthx/authorization"
 	"github.com/xiehqing/hiauthx/db/entity"
 	"github.com/xiehqing/hiauthx/db/queries"
@@ -31,6 +33,9 @@ func (r *Router) createSystemConfig(ctx context.Context, c *app.RequestContext) 
 		return
 	}
 	data, err := r.service.CreateSystemConfig(ctx, req)
+	if err == nil && systemConfigAffectsTokenManager(req.Key) {
+		r.refreshTokenManagerAfterSystemConfigChange(ctx)
+	}
 	handleData(c, data, err)
 }
 
@@ -46,6 +51,9 @@ func (r *Router) updateSystemConfig(ctx context.Context, c *app.RequestContext) 
 	}
 	req.ID = id
 	data, err := r.service.UpdateSystemConfig(ctx, req)
+	if err == nil && systemConfigAffectsTokenManager(req.Key) {
+		r.refreshTokenManagerAfterSystemConfigChange(ctx)
+	}
 	handleData(c, data, err)
 }
 
@@ -55,6 +63,9 @@ func (r *Router) batchSaveSystemConfigs(ctx context.Context, c *app.RequestConte
 		return
 	}
 	data, err := r.service.BatchSaveSystemConfigs(ctx, req)
+	if err == nil && systemConfigsAffectsTokenManager(data) {
+		r.refreshTokenManagerAfterSystemConfigChange(ctx)
+	}
 	handleData(c, data, err)
 }
 
@@ -111,5 +122,41 @@ func (r *Router) deleteSystemConfig(ctx context.Context, c *app.RequestContext) 
 	if !ok {
 		return
 	}
-	handleMsg(c, "系统配置删除成功", r.service.DeleteSystemConfig(ctx, id))
+	config, err := r.service.GetSystemConfig(ctx, id)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	err = r.service.DeleteSystemConfig(ctx, id)
+	if err == nil && config != nil && systemConfigAffectsTokenManager(config.Key) {
+		r.refreshTokenManagerAfterSystemConfigChange(ctx)
+	}
+	handleMsg(c, "系统配置删除成功", err)
+}
+
+func (r *Router) refreshTokenManagerAfterSystemConfigChange(ctx context.Context) {
+	r.RefreshTokenManager(ctx)
+}
+
+func systemConfigsAffectsTokenManager(items []entity.SystemConfig) bool {
+	for _, item := range items {
+		if systemConfigAffectsTokenManager(item.Key) {
+			return true
+		}
+	}
+	return false
+}
+
+func systemConfigAffectsTokenManager(key string) bool {
+	switch strings.TrimSpace(key) {
+	case entity.SecurityTokenStorage,
+		entity.SecurityTokenStorageType,
+		entity.SecurityTokenRedisConfig,
+		entity.SecurityTokenExpireMinutes,
+		entity.SecurityTokenJwtSecretKey,
+		entity.SecurityLoginConcurrentEnable:
+		return true
+	default:
+		return false
+	}
 }

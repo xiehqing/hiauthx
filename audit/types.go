@@ -93,6 +93,9 @@ func shouldAudit(tx *gorm.DB) bool {
 	if strings.HasPrefix(tx.Statement.Table, "audit_") {
 		return false
 	}
+	if !auditLogEnabled(tx.Statement.Context) {
+		return false
+	}
 	return true
 }
 

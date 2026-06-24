@@ -40,6 +40,9 @@ const (
 	SecurityTokenStorage       = "security.token.storage"
 	SecurityTokenStorageType   = "security.token.storage.type"
 	SecurityTokenRedisConfig   = "security.token.storage.redis"
+
+	AuditLogEnabled      = "audit.log.enabled"
+	AuditLogIncludeQuery = "audit.log.include_query"
 )
 
 type SystemConfig struct {

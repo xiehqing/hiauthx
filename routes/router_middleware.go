@@ -75,6 +75,10 @@ func (r *Router) auditContext() app.HandlerFunc {
 			IP:        c.ClientIP(),
 			UserAgent: string(c.UserAgent()),
 		}
+		auditEnabled := r.auditLogEnabled(ctx)
+		auditIncludeQuery := r.auditLogIncludeQuery(ctx)
+		value.Enabled = &auditEnabled
+		value.IncludeQuery = &auditIncludeQuery
 		routePath := c.FullPath()
 		if routePath == "" {
 			routePath = value.Path
@@ -112,6 +116,9 @@ func (r *Router) recordPlainRequestAudit(ctx context.Context, c *app.RequestCont
 	if skipPlainRequestAudit(method, path, c.Response.StatusCode()) {
 		return
 	}
+	if !auditEnabledFromContext(ctx) {
+		return
+	}
 
 	request := requestAuditFromRoute(method, path)
 	if value, ok := audit.FromContext(ctx); ok {
@@ -128,6 +135,9 @@ func (r *Router) recordPlainRequestAudit(ctx context.Context, c *app.RequestCont
 			request.ResourceType = value.ResourceType
 		}
 	}
+	if request.Action == entity.AuditOperationQuery && !auditIncludeQueryFromContext(ctx) {
+		return
+	}
 	request.DurationMs = durationMs
 	statusCode := c.Response.StatusCode()
 	if statusCode >= 400 {
@@ -139,8 +149,30 @@ func (r *Router) recordPlainRequestAudit(ctx context.Context, c *app.RequestCont
 	_ = r.q.CreateRequestAudit(ctx, request)
 }
 
+func (r *Router) auditLogEnabled(ctx context.Context) bool {
+	return r.q.GetSystemConfigBoolValueByKey(ctx, entity.AuditLogEnabled, true)
+}
+
+func (r *Router) auditLogIncludeQuery(ctx context.Context) bool {
+	return r.q.GetSystemConfigBoolValueByKey(ctx, entity.AuditLogIncludeQuery, true)
+}
+
+func auditEnabledFromContext(ctx context.Context) bool {
+	if value, ok := audit.FromContext(ctx); ok && value.Enabled != nil {
+		return *value.Enabled
+	}
+	return true
+}
+
+func auditIncludeQueryFromContext(ctx context.Context) bool {
+	if value, ok := audit.FromContext(ctx); ok && value.IncludeQuery != nil {
+		return *value.IncludeQuery
+	}
+	return true
+}
+
 func skipPlainRequestAudit(method, path string, statusCode int) bool {
-	if path == "/api/v1/health" || strings.HasPrefix(path, "/api/v1/audit-logs") {
+	if path == "/api/v1/health" || strings.HasPrefix(path, "/api/v1/audit-logs") || strings.HasPrefix(path, "/api/v1/operation-logs") {
 		return true
 	}
 	if method == "GET" {

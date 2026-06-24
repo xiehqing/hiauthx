@@ -12,31 +12,52 @@ import (
 )
 
 func (r *Router) registerAuditRoutes(api *route.RouterGroup) {
+	operations := api.Group("/operation-logs", r.CheckLogin())
+	operations.GET("", r.listOperationLogs)
+
 	audits := api.Group("/audit-logs", r.CheckLogin())
 	audits.GET("", r.listAuditLogs)
 	audits.GET("/:id", r.getAuditLog)
 }
 
+func (r *Router) listOperationLogs(ctx context.Context, c *app.RequestContext) {
+	filter, ok := auditLogListFilter(c)
+	if !ok {
+		return
+	}
+	req := authorization.ListOperationLogsRequest{AuditLogListFilter: filter}
+	data, err := r.service.ListOperationLogs(ctx, req)
+	handleData(c, data, err)
+}
+
 func (r *Router) listAuditLogs(ctx context.Context, c *app.RequestContext) {
-	startTime, endTime, ok := auditTimeRange(c)
+	filter, ok := auditLogListFilter(c)
 	if !ok {
 		return
 	}
 	req := authorization.ListAuditLogsRequest{
-		AuditLogListFilter: queries.AuditLogListFilter{
-			Pagination:   pagination(c),
-			OperatorName: c.DefaultQuery("operatorName", ""),
-			Module:       c.DefaultQuery("module", ""),
-			Action:       c.DefaultQuery("action", ""),
-			ResourceType: c.DefaultQuery("resourceType", ""),
-			ResourceID:   queryInt64(c, "resourceId"),
-			Status:       c.DefaultQuery("status", ""),
-			StartTime:    startTime,
-			EndTime:      endTime,
-		},
+		AuditLogListFilter: filter,
 	}
 	data, err := r.service.ListAuditLogs(ctx, req)
 	handleData(c, data, err)
+}
+
+func auditLogListFilter(c *app.RequestContext) (queries.AuditLogListFilter, bool) {
+	startTime, endTime, ok := auditTimeRange(c)
+	if !ok {
+		return queries.AuditLogListFilter{}, false
+	}
+	return queries.AuditLogListFilter{
+		Pagination:   pagination(c),
+		OperatorName: c.DefaultQuery("operatorName", ""),
+		Module:       c.DefaultQuery("module", ""),
+		Action:       c.DefaultQuery("action", ""),
+		ResourceType: c.DefaultQuery("resourceType", ""),
+		ResourceID:   queryInt64(c, "resourceId"),
+		Status:       c.DefaultQuery("status", ""),
+		StartTime:    startTime,
+		EndTime:      endTime,
+	}, true
 }
 
 func auditTimeRange(c *app.RequestContext) (*time.Time, *time.Time, bool) {

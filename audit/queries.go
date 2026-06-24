@@ -26,6 +26,9 @@ func NewAudit(db *gorm.DB) *Queries {
 // RecordAudit 记录日志
 func (q *Queries) RecordAudit(ctx context.Context, tx *gorm.DB, options auditRecordOptions) error {
 	auditTx := cleanAuditDB(tx, ctx)
+	if !auditLogEnabled(ctx) {
+		return nil
+	}
 	auditContext, _ := FromContext(ctx)
 	beforeData, beforeMap := serializeAuditDataWithMask(options.before, true)
 	afterData, afterMap := serializeAuditDataWithMask(options.after, true)
