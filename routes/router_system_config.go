@@ -12,7 +12,7 @@ import (
 
 func (r *Router) registerSystemConfigRoutes(api *route.RouterGroup) {
 	api.GET("/system-configs/site-settings", r.getSiteSettings)
-	configs := api.Group("/system-configs", checkLogin())
+	configs := api.Group("/system-configs", r.CheckLogin())
 	configs.GET("", r.listSystemConfigs)
 	configs.POST("", r.createSystemConfig)
 	configs.GET("/enabled", r.listEnabledSystemConfigs)

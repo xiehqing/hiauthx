@@ -83,6 +83,29 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /api/v1/auth/rsa-key-pair:
+    post:
+      tags: [认证管理]
+      summary: 生成 RSA 公私钥对
+      description: 生成登录加密使用的 RSA 公钥和私钥，页面可将返回值保存到系统配置中。
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRSAKeyPairRequest"
+      responses:
+        "200":
+          description: RSA 公私钥对
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RSAKeyPairResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /api/v1/auth/logout:
     post:
       tags: [认证管理]
@@ -1116,6 +1139,33 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/EncryptConfig"
+
+    GenerateRSAKeyPairRequest:
+      type: object
+      properties:
+        bits:
+          type: integer
+          enum: [2048, 3072, 4096]
+          default: 2048
+          description: RSA 密钥长度；不传或非法值默认 2048
+
+    RSAKeyPair:
+      type: object
+      properties:
+        publicKey:
+          type: string
+          description: RSA 公钥 PEM
+        privateKey:
+          type: string
+          description: RSA 私钥 PEM，页面保存到系统配置后不应再次明文展示
+
+    RSAKeyPairResponse:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/RSAKeyPair"
 
     BaseModel:
       type: object

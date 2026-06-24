@@ -10,7 +10,7 @@ import (
 )
 
 func (r *Router) registerMenuRoutes(api *route.RouterGroup) {
-	menus := api.Group("/menus", checkLogin())
+	menus := api.Group("/menus", r.CheckLogin())
 	menus.GET("", r.listMenus)
 	menus.POST("", r.createMenu)
 	menus.GET("/:id", r.getMenu)

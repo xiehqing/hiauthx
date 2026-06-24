@@ -34,6 +34,7 @@ VALUES
   ('健康检查', 'GET', '/api/v1/health', '系统', 'query', '检查服务健康状态', 'system', 1, 10, NOW(), 'system', NOW(), 'system'),
 
   ('获取登录加密配置', 'GET', '/api/v1/auth/encrypt-config', '认证管理', 'query', '获取登录密码加密配置', 'auth', 1, 100, NOW(), 'system', NOW(), 'system'),
+  ('生成 RSA 密钥对', 'POST', '/api/v1/auth/rsa-key-pair', '认证管理', 'create', '生成登录加密 RSA 公私钥对', 'auth', 1, 105, NOW(), 'system', NOW(), 'system'),
   ('用户登录', 'POST', '/api/v1/auth/login', '认证管理', 'login', '用户登录', 'auth', 1, 110, NOW(), 'system', NOW(), 'system'),
   ('用户退出', 'POST', '/api/v1/auth/logout', '认证管理', 'logout', '用户退出登录', 'auth', 1, 120, NOW(), 'system', NOW(), 'system'),
   ('查询当前用户', 'GET', '/api/v1/auth/me', '认证管理', 'query', '查询当前登录用户', 'auth', 1, 130, NOW(), 'system', NOW(), 'system'),

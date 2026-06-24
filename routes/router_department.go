@@ -10,7 +10,7 @@ import (
 )
 
 func (r *Router) registerDepartmentRoutes(api *route.RouterGroup) {
-	departments := api.Group("/departments", checkLogin())
+	departments := api.Group("/departments", r.CheckLogin())
 	departments.GET("", r.listDepartments)
 	departments.GET("/options", r.listDepartmentOptions)
 	departments.POST("", r.createDepartment)

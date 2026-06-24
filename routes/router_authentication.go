@@ -10,13 +10,23 @@ import (
 func (r *Router) registerAuthenticationRoutes(api *route.RouterGroup) {
 	auth := api.Group("/auth")
 	auth.GET("/encrypt-config", r.encryptConfig)
+	auth.POST("/rsa-key-pair", r.CheckLogin(), r.generateRSAKeyPair)
 	auth.POST("/login", r.login)
-	auth.POST("/logout", checkLogin(), r.logout)
-	auth.GET("/me", checkLogin(), r.currentUser)
+	auth.POST("/logout", r.CheckLogin(), r.logout)
+	auth.GET("/me", r.CheckLogin(), r.currentUser)
 }
 
 func (r *Router) encryptConfig(ctx context.Context, c *app.RequestContext) {
 	data, err := r.authentication.GetEncryptConfig(ctx)
+	handleData(c, data, err)
+}
+
+func (r *Router) generateRSAKeyPair(ctx context.Context, c *app.RequestContext) {
+	var req authentication.GenerateRSAKeyPairRequest
+	if !bindJSON(c, &req) {
+		return
+	}
+	data, err := r.authentication.GenerateRSAKeyPair(ctx, req)
 	handleData(c, data, err)
 }
 

@@ -18,7 +18,16 @@ import (
 	"github.com/xiehqing/infra/pkg/hertzx"
 )
 
-func checkLogin() app.HandlerFunc {
+const (
+	CtxKeyOfUser            = "user"
+	CtxKeyOfUserID          = "userId"
+	CtxKeyOfUserName        = "username"
+	CtxKeyOfIsSystemManager = "isSystemManager"
+)
+
+const defaultSystemRole = "role_admin"
+
+func (r *Router) CheckLogin() app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		token := normalizeAuthorizationToken(authorizationToken(c))
 		if token == "" {
@@ -29,6 +38,24 @@ func checkLogin() app.HandlerFunc {
 			hertzx.Unauthorized(c, "登录状态已失效，请重新登录")
 			return
 		}
+		userID, ok := currentUserID(c)
+		if !ok {
+			hertzx.Unauthorized(c, "未获取到当前登录用户信息，请重新登录")
+			return
+		}
+		user, err := r.service.GetUser(ctx, userID)
+		if err != nil {
+			hertzx.Unauthorized(c, "获取当前登录用户信息失败，请重新登录")
+			return
+		}
+		if user == nil {
+			hertzx.Unauthorized(c, "未获取到当前登录用户，请重新登录")
+			return
+		}
+		c.Set(CtxKeyOfUser, user)
+		c.Set(CtxKeyOfUserID, userID)
+		c.Set(CtxKeyOfUserName, user.Username)
+		c.Set(CtxKeyOfIsSystemManager, isSystemManager(user))
 		c.Next(ctx)
 	}
 }
@@ -213,4 +240,43 @@ func normalizeAuthorizationToken(token string) string {
 
 func authorizationToken(c *app.RequestContext) string {
 	return string(c.GetHeader("Authorization"))
+}
+
+// currentUserID 从登录令牌中解析当前用户 ID。
+func currentUserID(c *app.RequestContext) (int64, bool) {
+	token := normalizeAuthorizationToken(authorizationToken(c))
+	if token == "" {
+		return 0, false
+	}
+	loginID, err := htputil.GetLoginID(token)
+	if err != nil {
+		return 0, false
+	}
+	userID, err := strconv.ParseInt(strings.TrimSpace(loginID), 10, 64)
+	if err != nil || userID <= 0 {
+		return 0, false
+	}
+	return userID, true
+}
+
+// isSystemManager 判断用户是否具备系统级空间管理权限。
+func isSystemManager(user *entity.User) bool {
+	if user == nil {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(user.Username), "admin") {
+		return true
+	}
+	for _, role := range user.Roles {
+		if isSystemAdminRole(role) {
+			return true
+		}
+	}
+	return false
+}
+
+// isSystemAdminRole 判断角色是否为系统管理员角色。
+func isSystemAdminRole(role entity.Role) bool {
+	normalized := strings.ToLower(strings.TrimSpace(role.Name))
+	return normalized == defaultSystemRole
 }

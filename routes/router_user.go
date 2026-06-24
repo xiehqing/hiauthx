@@ -10,7 +10,7 @@ import (
 )
 
 func (r *Router) registerUserRoutes(api *route.RouterGroup) {
-	users := api.Group("/users", checkLogin())
+	users := api.Group("/users", r.CheckLogin())
 	users.GET("", r.listUsers)
 	users.POST("", r.createUser)
 	users.GET("/:id", r.getUser)

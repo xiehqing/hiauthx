@@ -11,6 +11,47 @@ import (
 	"strings"
 )
 
+const DefaultRSAKeyBits = 2048
+
+type RSAKeyPair struct {
+	PublicKey  string `json:"publicKey"`
+	PrivateKey string `json:"privateKey"`
+}
+
+func GenerateRSAKeyPair(bits int) (*RSAKeyPair, error) {
+	if bits <= 0 {
+		bits = DefaultRSAKeyBits
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return nil, err
+	}
+	if err := privateKey.Validate(); err != nil {
+		return nil, err
+	}
+
+	privateKeyDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	publicKeyDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RSAKeyPair{
+		PublicKey: string(pem.EncodeToMemory(&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: publicKeyDER,
+		})),
+		PrivateKey: string(pem.EncodeToMemory(&pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: privateKeyDER,
+		})),
+	}, nil
+}
+
 func NormalizePublicKeyPEM(value string) string {
 	value = normalizePEMText(value)
 	if value == "" {
