@@ -11,10 +11,28 @@ import (
 	"github.com/xiehqing/hitoken/htputil"
 )
 
-const loginFailCountKey = "loginFailCount"
+const (
+	loginFailCountKey      = "loginFailCount"
+	defaultSystemAdminRole = "role_admin"
+)
 
 func isAdminUsername(username string) bool {
 	return strings.EqualFold(strings.TrimSpace(username), "admin")
+}
+
+func isSystemManager(user *entity.User) bool {
+	if user == nil {
+		return false
+	}
+	if isAdminUsername(user.Username) {
+		return true
+	}
+	for _, role := range user.Roles {
+		if strings.EqualFold(strings.TrimSpace(role.Name), defaultSystemAdminRole) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) checkLoginLocked(loginID string) error {

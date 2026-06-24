@@ -164,7 +164,7 @@ func (s *Service) CurrentUser(ctx context.Context, token string) (*LoginResponse
 func (s *Service) authMenus(ctx context.Context, user *entity.User) ([]string, []MenuTree, error) {
 	var menus []entity.Menu
 	var err error
-	if user != nil && isAdminUsername(user.Username) {
+	if isSystemManager(user) {
 		menus, err = s.queries.ListAllMenus(ctx)
 		if err != nil {
 			return nil, nil, err
