@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/xiehqing/hiauthx/audit"
+	"github.com/xiehqing/hiauthx/authn"
 	"github.com/xiehqing/hiauthx/db/entity"
 	"github.com/xiehqing/hiauthx/db/queries"
 	"strconv"
@@ -29,17 +30,22 @@ const defaultSystemRole = "role_admin"
 
 func (r *Router) CheckLogin() app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
+		if r.externalAuth != nil {
+			r.checkExternalLogin(ctx, c)
+			return
+		}
 		token := normalizeAuthorizationToken(authorizationToken(c))
 		if token == "" {
 			hertzx.Unauthorized(c, "请先登录")
 			return
 		}
-		if err := htputil.CheckLogin(token); err != nil {
+		identity, err := (authn.LocalAuthenticator{}).Authenticate(ctx, token)
+		if err != nil {
 			hertzx.Unauthorized(c, "登录状态已失效，请重新登录")
 			return
 		}
-		userID, ok := currentUserID(c)
-		if !ok {
+		userID, parseErr := strconv.ParseInt(strings.TrimSpace(identity.Subject), 10, 64)
+		if parseErr != nil || userID <= 0 {
 			hertzx.Unauthorized(c, "未获取到当前登录用户信息，请重新登录")
 			return
 		}
@@ -56,7 +62,7 @@ func (r *Router) CheckLogin() app.HandlerFunc {
 		c.Set(CtxKeyOfUserID, userID)
 		c.Set(CtxKeyOfUserName, user.Username)
 		c.Set(CtxKeyOfIsSystemManager, isSystemManager(user))
-		c.Next(ctx)
+		c.Next(bindPrincipal(ctx, c, authn.Principal{LocalUserID: userID, Username: user.Username, IsAppAdmin: isSystemManager(user), Identity: authn.Identity{Issuer: "local", Subject: strconv.FormatInt(userID, 10), Username: user.Username}}))
 	}
 }
 
@@ -91,7 +97,7 @@ func (r *Router) auditContext() app.HandlerFunc {
 		}
 
 		token := normalizeAuthorizationToken(authorizationToken(c))
-		if token != "" {
+		if token != "" && r.externalAuth == nil {
 			if loginID, err := htputil.GetLoginID(token); err == nil {
 				if userID, err := strconv.ParseInt(loginID, 10, 64); err == nil {
 					value.OperatorID = userID
@@ -106,6 +112,13 @@ func (r *Router) auditContext() app.HandlerFunc {
 
 		auditCtx := audit.WithContext(ctx, value)
 		c.Next(auditCtx)
+		if raw, ok := c.Get(principalRequestKey); ok {
+			if p, ok := raw.(authn.Principal); ok {
+				value.OperatorID = p.LocalUserID
+				value.OperatorName = p.Username
+				auditCtx = audit.WithContext(auditCtx, value)
+			}
+		}
 		r.recordPlainRequestAudit(auditCtx, c, time.Since(start).Milliseconds())
 	}
 }
@@ -276,6 +289,11 @@ func authorizationToken(c *app.RequestContext) string {
 
 // currentUserID 从登录令牌中解析当前用户 ID。
 func currentUserID(c *app.RequestContext) (int64, bool) {
+	if raw, ok := c.Get(principalRequestKey); ok {
+		if p, ok := raw.(authn.Principal); ok {
+			return p.LocalUserID, p.LocalUserID > 0
+		}
+	}
 	token := normalizeAuthorizationToken(authorizationToken(c))
 	if token == "" {
 		return 0, false

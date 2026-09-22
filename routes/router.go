@@ -20,6 +20,7 @@ import (
 )
 
 type Router struct {
+	externalAuth   *ExternalAuth
 	q              *queries.Queries
 	service        *authorization.Service
 	authentication *authentication.Service
@@ -51,7 +52,9 @@ func (r *Router) Authorization() *authorization.Service {
 }
 
 func (r *Router) RefreshTokenManager(ctx context.Context) {
-	hitokenx.RefreshManager(ctx, r.q)
+	if r.externalAuth == nil {
+		hitokenx.RefreshManager(ctx, r.q)
+	}
 }
 
 func (r *Router) Init(server *server.Hertz) {

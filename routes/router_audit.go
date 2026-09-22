@@ -12,10 +12,10 @@ import (
 )
 
 func (r *Router) registerAuditRoutes(api *route.RouterGroup) {
-	operations := api.Group("/operation-logs", r.CheckLogin())
+	operations := api.Group("/operation-logs", r.CheckLogin(), r.checkExternalManager())
 	operations.GET("", r.listOperationLogs)
 
-	audits := api.Group("/audit-logs", r.CheckLogin())
+	audits := api.Group("/audit-logs", r.CheckLogin(), r.checkExternalManager())
 	audits.GET("", r.listAuditLogs)
 	audits.GET("/:id", r.getAuditLog)
 }

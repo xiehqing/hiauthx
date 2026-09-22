@@ -10,13 +10,19 @@ import (
 )
 
 func (r *Router) registerDepartmentRoutes(api *route.RouterGroup) {
-	departments := api.Group("/departments", r.CheckLogin())
+	departments := api.Group("/departments", r.CheckLogin(), r.checkExternalManager())
 	departments.GET("", r.listDepartments)
 	departments.GET("/options", r.listDepartmentOptions)
-	departments.POST("", r.createDepartment)
+	if r.externalAuth == nil {
+		departments.POST("", r.createDepartment)
+	}
 	departments.GET("/:id", r.getDepartment)
-	departments.PUT("/:id", r.updateDepartment)
-	departments.DELETE("/:id", r.deleteDepartment)
+	if r.externalAuth == nil {
+		departments.PUT("/:id", r.updateDepartment)
+	}
+	if r.externalAuth == nil {
+		departments.DELETE("/:id", r.deleteDepartment)
+	}
 }
 
 func (r *Router) createDepartment(ctx context.Context, c *app.RequestContext) {

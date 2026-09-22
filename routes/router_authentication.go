@@ -5,10 +5,16 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/route"
 	"github.com/xiehqing/hiauthx/authentication"
+	"github.com/xiehqing/hiauthx/authn"
 )
 
 func (r *Router) registerAuthenticationRoutes(api *route.RouterGroup) {
 	auth := api.Group("/auth")
+	if r.externalAuth != nil {
+		auth.POST("/logout", r.logout)
+		auth.GET("/me", r.CheckLogin(), r.currentUser)
+		return
+	}
 	auth.GET("/encrypt-config", r.encryptConfig)
 	auth.POST("/rsa-key-pair", r.CheckLogin(), r.generateRSAKeyPair)
 	auth.POST("/login", r.login)
@@ -41,10 +47,33 @@ func (r *Router) login(ctx context.Context, c *app.RequestContext) {
 }
 
 func (r *Router) logout(ctx context.Context, c *app.RequestContext) {
+	if r.externalAuth != nil {
+		if err := r.externalAuth.Revoker.Revoke(ctx, normalizeAuthorizationToken(authorizationToken(c))); err != nil {
+			externalError(c, err)
+			return
+		}
+		handleMsg(c, "退出登录成功", nil)
+		return
+	}
 	handleMsg(c, "退出登录成功", r.authentication.Logout(ctx, authorizationToken(c)))
 }
 
 func (r *Router) currentUser(ctx context.Context, c *app.RequestContext) {
+	c.Response.Header.Set("Cache-Control", "no-store")
+	if r.externalAuth != nil {
+		p, ok := authn.FromContext(ctx)
+		if !ok {
+			externalError(c, authn.ErrUnauthenticated)
+			return
+		}
+		data, err := r.authentication.ExternalCurrentUser(ctx, p.LocalUserID, normalizeAuthorizationToken(authorizationToken(c)))
+		if err != nil {
+			externalError(c, err)
+			return
+		}
+		handleData(c, data, nil)
+		return
+	}
 	data, err := r.authentication.CurrentUser(ctx, authorizationToken(c))
 	handleData(c, data, err)
 }

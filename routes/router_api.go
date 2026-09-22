@@ -10,7 +10,7 @@ import (
 )
 
 func (r *Router) registerAPIRoutes(api *route.RouterGroup) {
-	items := api.Group("/apis", r.CheckLogin())
+	items := api.Group("/apis", r.CheckLogin(), r.checkExternalManager())
 	items.GET("", r.listAPIs)
 	items.POST("", r.createAPI)
 	items.GET("/:id", r.getAPI)

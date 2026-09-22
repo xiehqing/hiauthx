@@ -10,7 +10,7 @@ import (
 )
 
 func (r *Router) registerRoleRoutes(api *route.RouterGroup) {
-	roles := api.Group("/roles", r.CheckLogin())
+	roles := api.Group("/roles", r.CheckLogin(), r.checkExternalManager())
 	roles.GET("", r.listRoles)
 	roles.GET("/options", r.listRoleOptions)
 	roles.POST("", r.createRole)

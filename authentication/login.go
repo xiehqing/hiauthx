@@ -3,6 +3,7 @@ package authentication
 import (
 	"context"
 	"fmt"
+	"github.com/xiehqing/hiauthx/authn"
 	"github.com/xiehqing/hiauthx/db/entity"
 	"strconv"
 	"strings"
@@ -41,7 +42,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 	if err != nil {
 		return nil, err
 	}
-	if user == nil {
+	if user == nil || user.IdentitySource != "" {
 		return nil, ErrInvalidLogin
 	}
 	if user.Status != userStatusEnabled {
@@ -162,9 +163,13 @@ func (s *Service) CurrentUser(ctx context.Context, token string) (*LoginResponse
 }
 
 func (s *Service) authMenus(ctx context.Context, user *entity.User) ([]string, []MenuTree, error) {
+	return s.authMenusWithAdmin(ctx, user, isSystemManager(user))
+}
+
+func (s *Service) authMenusWithAdmin(ctx context.Context, user *entity.User, admin bool) ([]string, []MenuTree, error) {
 	var menus []entity.Menu
 	var err error
-	if isSystemManager(user) {
+	if admin {
 		menus, err = s.queries.ListAllMenus(ctx)
 		if err != nil {
 			return nil, nil, err
@@ -184,4 +189,31 @@ func (s *Service) authMenus(ctx context.Context, user *entity.User) ([]string, [
 	tree := buildMenuTree(menus)
 	permissions := menuPermissions(menus)
 	return permissions, tree, nil
+}
+
+// ExternalCurrentUser requires an authenticated Principal from the router. It
+// never resolves the external token using the local token manager.
+func (s *Service) ExternalCurrentUser(ctx context.Context, userID int64, token string) (*LoginResponse, error) {
+	p, ok := authn.FromContext(ctx)
+	if !ok || p.LocalUserID != userID {
+		return nil, authn.ErrUnauthenticated
+	}
+	user, err := s.queries.GetUserForAuth(ctx, userID)
+	if err != nil {
+		return nil, authn.ErrUnavailable
+	}
+	if user == nil || user.Status != userStatusEnabled {
+		return nil, authn.ErrForbidden
+	}
+	admin := false
+	for _, role := range user.Roles {
+		if strings.EqualFold(strings.TrimSpace(role.Name), defaultSystemAdminRole) {
+			admin = true
+		}
+	}
+	permissions, menus, err := s.authMenusWithAdmin(ctx, user, admin)
+	if err != nil {
+		return nil, authn.ErrUnavailable
+	}
+	return &LoginResponse{AccessToken: token, TokenType: "Bearer", User: user, Roles: roleNames(user.Roles), Permissions: permissions, Menus: menus, Department: user.Department}, nil
 }

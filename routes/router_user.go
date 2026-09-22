@@ -10,12 +10,18 @@ import (
 )
 
 func (r *Router) registerUserRoutes(api *route.RouterGroup) {
-	users := api.Group("/users", r.CheckLogin())
+	users := api.Group("/users", r.CheckLogin(), r.checkExternalManager())
 	users.GET("", r.listUsers)
-	users.POST("", r.createUser)
+	if r.externalAuth == nil {
+		users.POST("", r.createUser)
+	}
 	users.GET("/:id", r.getUser)
-	users.PUT("/:id", r.updateUser)
-	users.DELETE("/:id", r.deleteUser)
+	if r.externalAuth == nil {
+		users.PUT("/:id", r.updateUser)
+	}
+	if r.externalAuth == nil {
+		users.DELETE("/:id", r.deleteUser)
+	}
 }
 
 func (r *Router) createUser(ctx context.Context, c *app.RequestContext) {
