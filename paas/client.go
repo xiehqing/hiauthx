@@ -31,6 +31,7 @@ type Config struct {
 	IssuerID          string    `json:"issuerId" yaml:"issuer-id" mapstructure:"issuer-id"`
 	AppCode           string    `json:"appCode" yaml:"app-code" mapstructure:"app-code"`
 	AppSecretEnv      string    `json:"appSecretEnv" yaml:"app-secret-env" mapstructure:"app-secret-env"`
+	AppSecret         string    `json:"appSecret" yaml:"app-secret" mapstructure:"app-secret"`
 	Timeout           string    `json:"timeout" yaml:"timeout" mapstructure:"timeout"`
 	Endpoints         Endpoints `json:"endpoints" yaml:"endpoints" mapstructure:"endpoints"`
 }
@@ -44,8 +45,12 @@ type Client struct {
 
 // New reads the secret only on the server. HTTP requires explicit opt-in.
 func New(cfg Config) (*Client, error) {
-	secret, ok := os.LookupEnv(cfg.AppSecretEnv)
-	if !ok || strings.TrimSpace(secret) == "" {
+	secret := strings.TrimSpace(cfg.AppSecret)
+	if secret == "" {
+		secret, _ = os.LookupEnv(cfg.AppSecretEnv)
+		secret = strings.TrimSpace(secret)
+	}
+	if secret == "" {
 		return nil, errors.New("PaaS application secret environment variable is missing or empty")
 	}
 	return newClient(cfg, secret, nil)

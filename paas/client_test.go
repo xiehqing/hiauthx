@@ -166,3 +166,14 @@ func TestInvalidConfigAndEmptyToken(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDirectSecretTakesPrecedenceOverEnvironment(t *testing.T) {
+	t.Setenv("PAAS_DIRECT_SECRET", "wrong-secret")
+	c, err := New(Config{BaseURL: "https://paas.example.com", IssuerID: "paas", AppCode: "agent", AppSecret: "direct-secret", AppSecretEnv: "PAAS_DIRECT_SECRET"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.secret != "direct-secret" {
+		t.Fatalf("secret=%q", c.secret)
+	}
+}
